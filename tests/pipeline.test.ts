@@ -199,4 +199,24 @@ describe("pipeline", () => {
     const [blog] = await db.select().from(source).where(eq(source.kind, "listing"));
     expect(blog?.consecutiveFailures).toBe(1);
   });
+
+  it("tells the operator when Slack deliveries fail, even if every source is healthy", async () => {
+    const { postToSlack } = await import("../src/pipeline/slack");
+    web.set("https://acme.test/blog", listing(["old-one"]));
+    web.set("https://acme.test/", home("The AI security platform"));
+    await runPipeline(db, "test");
+    web.set("https://acme.test/blog", listing(["old-one", "gatekeeper"]));
+    web.set("https://acme.test/blog/gatekeeper", post("Gatekeeper"));
+    judgeReply.mockResolvedValue(judgment_("alert", "inspects every tool call at runtime"));
+    vi.mocked(postToSlack).mockImplementation(async (env: string, payload: unknown) => {
+      if (env === "SLACK_product") throw new Error("webhook revoked");
+      posted.push({ env, payload: payload as { text: string } });
+    });
+    const r = await runPipeline(db, "test");
+    expect(r?.stats.deliveryFailed).toBeGreaterThan(0);
+    const ops = posted.filter((p) => p.env === "SLACK_WEBHOOK_OPS");
+    expect(ops).toHaveLength(1);
+    expect(JSON.stringify(ops[0]!.payload)).toContain("Slack deliveries failed");
+    vi.mocked(postToSlack).mockImplementation(async (env: string, payload: unknown) => { posted.push({ env, payload: payload as { text: string } }); });
+  });
 });

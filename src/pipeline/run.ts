@@ -47,7 +47,11 @@ export async function runPipeline(db: DB, trigger: string) {
 
   const summary = `Run ${runId}: ${stats.sources} sources (${stats.sourcesFailed} failed), ${stats.newItems} new, ${stats.judged} judged, ${stats.alerts} alerts, ${stats.digests} digests`;
   try {
-    stats.healthProblems = await checkHealth(db, summary);
+    const runProblems = [
+      ...(error ? [`This run hit a problem: ${error.split("\n")[0]}`] : []),
+      ...(stats.deliveryFailed ? [`${stats.deliveryFailed} Slack deliveries failed. Check the team webhooks.`] : []),
+    ];
+    stats.healthProblems = await checkHealth(db, summary, runProblems);
   } catch (e) {
     error ??= (e as Error).message;
   }

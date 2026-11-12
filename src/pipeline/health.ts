@@ -23,11 +23,11 @@ export function sourceHealth(s: typeof source.$inferSelect, now = new Date()): {
   return { health: "healthy", reason: s.consecutiveFailures === 1 ? `last attempt failed: ${s.lastError}` : "ok" };
 }
 
-/** Posts one ops alert per problem per day. */
-export async function checkHealth(db: DB, runSummary: string) {
+/** Posts one ops alert per problem per day. Run-level problems (a crash, the budget, failed deliveries) come in from the run. */
+export async function checkHealth(db: DB, runSummary: string, runProblems: string[] = []) {
   const { date } = localNow();
   const rows = await db.select({ s: source, c: competitor }).from(source).innerJoin(competitor, eq(source.competitorId, competitor.id)).where(eq(source.active, true));
-  const problems: string[] = [];
+  const problems: string[] = runProblems.map((p) => `• ${p}`);
   for (const { s, c } of rows) {
     const h = sourceHealth(s);
     if (h.health === "failing" || h.health === "quiet") {
