@@ -1,0 +1,49 @@
+# Render blueprint. Secrets are marked sync: false and entered in the Render dashboard, never committed.
+services:
+  - type: web
+    name: competitor-monitor-web
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - fromGroup: competitor-monitor
+  - type: cron
+    name: competitor-monitor-pipeline
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    schedule: "0 */3 * * *"
+    dockerCommand: npx tsx scripts/run-pipeline.ts schedule
+    envVars:
+      - fromGroup: competitor-monitor
+envVarGroups:
+  - name: competitor-monitor
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: FEEDBACK_SECRET
+        generateValue: true
+      - key: OWNER_PASSWORD
+        sync: false
+      - key: OPS_PASSWORD
+        sync: false
+      - key: SLACK_WEBHOOK_MARKETING
+        sync: false
+      - key: SLACK_WEBHOOK_PRODUCT
+        sync: false
+      - key: SLACK_WEBHOOK_RND
+        sync: false
+      - key: SLACK_WEBHOOK_OPS
+        sync: false
+      - key: HEARTBEAT_URL
+        sync: false
+      - key: APP_TIMEZONE
+        value: Asia/Jerusalem
+      - key: BUDGET_PER_MONTH_USD
+        value: "40"

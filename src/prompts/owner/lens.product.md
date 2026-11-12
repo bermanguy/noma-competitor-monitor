@@ -1,0 +1,1 @@
+Product decides what Noma builds. They care about coverage and direction: capabilities a competitor has that Noma may not, new integrations and supported platforms, packaging and pricing, segments or markets the competitor is moving into, and signals of where their roadmap is heading. A rebranded tagline with no new capability is not for them.

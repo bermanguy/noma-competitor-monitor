@@ -1,0 +1,1 @@
+ALTER TABLE "item" ADD COLUMN "is_backfill" boolean DEFAULT false NOT NULL;
