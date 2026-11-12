@@ -1,3 +1,0 @@
-module.exports=[94241,a=>a.a(async(b,c)=>{try{var d=a.i(73556),e=a.i(28352),f=b([d,e]);[d,e]=f.then?(await f)():f,a.s(["40aa607180fd1b45dd19cd3aa76b9d4b44c78c2dcb",()=>e.f]),c()}catch(a){c(a)}},!1),73556,a=>a.a(async(b,c)=>{try{var d=a.i(28352),e=b([d]);[d]=e.then?(await e)():e,a.s([]),c()}catch(a){c(a)}},!1)];
-
-//# sourceMappingURL=_next-internal_server_app_feedback_%5Bid%5D_page_actions_0zyowumhovmik.js.map
