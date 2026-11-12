@@ -15,7 +15,7 @@
     "product": "log",
     "rnd": "alert"
   },
-  "labelledBy": "draft",
+  "labelledBy": "owner",
   "note": "A detailed low-cost detection technique (activation probes via a forked KV cache) with measured gains: R&D today. Nothing for the others.",
   "tags": [
     "technical",

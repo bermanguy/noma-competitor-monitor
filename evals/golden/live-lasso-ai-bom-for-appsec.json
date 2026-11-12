@@ -15,7 +15,7 @@
     "product": "digest",
     "rnd": "digest"
   },
-  "labelledBy": "draft",
+  "labelledBy": "owner",
   "note": "AI-BOM that traces vulnerabilities to affected agents: a capability Product should compare with AI-SPM, with technical detail for R&D. No positioning change.",
   "tags": [
     "capability",
