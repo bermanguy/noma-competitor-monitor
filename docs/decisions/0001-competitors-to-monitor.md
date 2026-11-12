@@ -1,6 +1,6 @@
 # 0001. Competitors to monitor in the MVP
 
-- Status: Proposed (needs owner decision)
+- Status: Accepted by the product owner, 2026-11-12
 - Date: 2026-11-12
 
 ## Decision
