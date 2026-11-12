@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { config } from "../config";
 import type { DB } from "../db/client";
-import { competitor, feedback, item, judgment, team, topic } from "../db/schema";
+import { competitor, feedback, item, judgment, source, team, topic } from "../db/schema";
 import { PROMPT_VERSION } from "../prompts/scaffold";
 import { judgeItem, type JudgeResult } from "./judge";
 import { BudgetExceeded, Refused } from "./llm";
@@ -54,9 +54,10 @@ export async function saveJudgments(db: DB, itemId: number, sourceText: string, 
 /** Judges every pending item. Stops cleanly when the budget is reached; the rest wait for the next run. */
 export async function assessPending(db: DB, runId: number) {
   const pending = await db
-    .select({ i: item, c: competitor })
+    .select({ i: item, c: competitor, pageType: source.pageType })
     .from(item)
     .innerJoin(competitor, eq(item.competitorId, competitor.id))
+    .innerJoin(source, eq(item.sourceId, source.id))
     .where(eq(item.status, "pending"))
     .orderBy(item.id)
     .limit(40);
@@ -64,10 +65,10 @@ export async function assessPending(db: DB, runId: number) {
   const ctx = await loadContext(db);
   let judged = 0;
   let held = 0;
-  for (const { i, c } of pending) {
+  for (const { i, c, pageType } of pending) {
     try {
       const result = await judgeItem(db, runId, {
-        competitor: c.name, kind: i.kind, url: i.url, title: i.title, publishedAt: i.publishedAt,
+        competitor: c.name, kind: i.kind, pageType, url: i.url, title: i.title, publishedAt: i.publishedAt,
         text: i.text, diff: i.diff, teams: ctx.teams, topics: ctx.topics, examples: ctx.examples,
       });
       const sourceText = i.kind === "page_change" ? `${i.text}\n${i.beforeText ?? ""}` : i.text;

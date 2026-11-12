@@ -13,6 +13,8 @@ export const competitor = pgTable("competitor", {
 
 export type SourceKind = "feed" | "listing" | "page";
 export type FetchMode = "http" | "browser";
+/** For watched pages: which skill reads the page. "general" = text diff + gate; "pricing" = plans and prices compared field by field. */
+export type PageType = "general" | "pricing";
 
 /** Where we look. Kind decides the detection path. Technical settings are operator-owned. */
 export const source = pgTable("source", {
@@ -24,6 +26,7 @@ export const source = pgTable("source", {
   fetchMode: text("fetch_mode").$type<FetchMode>().notNull().default("http"),
   /** For listing pages: only links whose path starts with this prefix count as posts. */
   linkPrefix: text("link_prefix"),
+  pageType: text("page_type").$type<PageType>().notNull().default("general"),
   active: boolean("active").notNull().default(true),
   /** Set after the first successful crawl; everything seen before it is baseline. */
   baselinedAt: timestamp("baselined_at", { withTimezone: true }),
@@ -42,6 +45,8 @@ export const snapshot = pgTable("snapshot", {
   title: text("title"),
   text: text("text").notNull(),
   normalizedHash: text("normalized_hash").notNull(),
+  /** Structured reading of the page, for page types that have one (pricing: plans, prices, features). */
+  structured: jsonb("structured"),
   fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("snapshot_source_url_idx").on(t.sourceId, t.url, t.fetchedAt)]);
 

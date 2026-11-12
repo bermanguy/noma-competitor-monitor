@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { competitor, source, team, topic } from "@/db/schema";
 import { sourceHealth } from "@/pipeline/health";
-import { addCompetitor, addTopic, removeTopic, setCompetitorActive, updateTeam } from "./actions";
+import { addCompetitor, addTopic, addWatchedPage, removeTopic, setCompetitorActive, updateTeam } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             return (
               <tr key={c.id} style={{ opacity: c.active ? 1 : 0.5 }}>
                 <td><strong>{c.name}</strong><div className="muted">{c.domain}</div></td>
-                <td className="muted">{mine.map((s) => s.label).join(", ") || "nothing found yet"}</td>
+                <td className="muted">{mine.map((s) => s.label + (s.pageType === "pricing" ? " (pricing)" : "")).join(", ") || "nothing found yet"}</td>
                 <td><span className={`chip h-${worst}`}>{c.active ? HEALTH_TEXT[worst] : "Paused"}</span></td>
                 <td>
                   <form action={setCompetitorActive}>
@@ -54,6 +54,19 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <button>Add competitor</button>
         </form>
         <div className="muted" style={{ marginTop: 6 }}>We find their blog or news feed and homepage automatically. It takes a few seconds.</div>
+      </div>
+      <div className="card" style={{ marginTop: 12 }}>
+        <form action={addWatchedPage} className="row">
+          <select name="competitorId" style={{ width: "auto" }}>{comps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <div style={{ flex: 2 }}><input type="text" name="url" placeholder="Page to watch, e.g. https://example.com/pricing" required /></div>
+          <div style={{ flex: 1 }}><input type="text" name="label" placeholder="Name, e.g. Pricing" /></div>
+          <select name="pageType" style={{ width: "auto" }}>
+            <option value="general">General page</option>
+            <option value="pricing">Pricing page</option>
+          </select>
+          <button>Watch page</button>
+        </form>
+        <div className="muted" style={{ marginTop: 6 }}>General pages report meaningful wording changes. Pricing pages compare each plan's monthly and yearly price and features, and report exactly what changed.</div>
       </div>
 
       <h2>Topics to watch</h2>

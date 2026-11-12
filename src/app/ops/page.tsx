@@ -2,8 +2,9 @@ import { desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { competitor, feedback, item, judgment, run, setting, source, usage } from "@/db/schema";
 import { config } from "@/config";
+import { DEFAULT_CANARY_PRICING } from "@/lib/canary";
 import { sourceHealth } from "@/pipeline/health";
-import { addSource, retryItem, runNow, saveCanary, updateSource } from "./actions";
+import { addSource, retryItem, runNow, saveCanary, saveCanaryPricing, updateSource } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
     .select({ team: judgment.teamKey, useful: sql<number>`sum(case when ${feedback.useful} then 1 else 0 end)`, total: sql<number>`count(*)` })
     .from(feedback).innerJoin(judgment, eq(feedback.judgmentId, judgment.id)).groupBy(judgment.teamKey);
   const [canary] = await d.select().from(setting).where(eq(setting.key, "canary"));
+  const [canaryPricing] = await d.select().from(setting).where(eq(setting.key, "canary-pricing"));
 
   return (
     <>
@@ -65,7 +67,7 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
             const h = sourceHealth(s);
             return (
               <tr key={s.id}>
-                <td><strong>{c.name}</strong> · {s.label} <span className="muted">({s.kind})</span><div className="muted">{s.url}</div></td>
+                <td><strong>{c.name}</strong> · {s.label} <span className="muted">({s.kind === "page" ? `${s.pageType} page` : s.kind})</span><div className="muted">{s.url}</div></td>
                 <td><span className={`chip h-${h.health}`}>{h.health}</span><div className="muted">{h.reason}</div></td>
                 <td className="muted">{s.lastSuccessAt?.toISOString().slice(0, 16).replace("T", " ") ?? "never"}</td>
                 <td>
@@ -77,6 +79,11 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
                       <select name="fetchMode" defaultValue={s.fetchMode} style={{ width: "auto" }}>
                         <option value="http">Plain HTTP</option><option value="browser">Headless browser</option>
                       </select>
+                      {s.kind === "page" && (
+                        <select name="pageType" defaultValue={s.pageType} style={{ width: "auto" }}>
+                          <option value="general">General page</option><option value="pricing">Pricing page</option>
+                        </select>
+                      )}
                       <select name="active" defaultValue={s.active ? "1" : "0"} style={{ width: "auto" }}>
                         <option value="1">Active</option><option value="0">Off</option>
                       </select>
@@ -92,7 +99,7 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
       <div className="card" style={{ marginTop: 12 }}>
         <form action={addSource} className="row">
           <select name="competitorId" style={{ width: "auto" }}>{comps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <select name="kind" style={{ width: "auto" }}><option value="listing">Blog listing</option><option value="feed">RSS/Atom feed</option><option value="page">Watched page</option></select>
+          <select name="kind" style={{ width: "auto" }}><option value="listing">Blog listing</option><option value="feed">RSS/Atom feed</option><option value="page">Watched page</option><option value="pricing">Pricing page</option></select>
           <div style={{ flex: 2 }}><input type="text" name="url" placeholder="https://..." /></div>
           <div style={{ flex: 1 }}><input type="text" name="label" placeholder="Label" /></div>
           <div style={{ flex: 1 }}><input type="text" name="linkPrefix" placeholder="/blog (listings)" /></div>
@@ -141,6 +148,11 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
       <form action={saveCanary} className="card">
         <textarea name="text" defaultValue={canary?.value ?? ""} style={{ minHeight: 140 }} />
         <button style={{ marginTop: 8 }}>Update canary page</button> <a href="/canary" target="_blank">View</a>
+      </form>
+      <p className="muted">Pricing canary, watched with the pricing skill. One plan per line: <code>Plan | monthly price | yearly price | feature; feature</code>. Change a price, move a feature or add a plan, then run.</p>
+      <form action={saveCanaryPricing} className="card">
+        <textarea name="text" defaultValue={canaryPricing?.value || DEFAULT_CANARY_PRICING} style={{ minHeight: 100 }} />
+        <button style={{ marginTop: 8 }}>Update pricing canary</button> <a href="/canary/pricing" target="_blank">View</a>
       </form>
     </>
   );
