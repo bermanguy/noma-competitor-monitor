@@ -105,7 +105,9 @@ async function collectPosts(db: DB, s: Source, c: Competitor, body: string, fina
     }
     const ex = extractMain(page.body, page.url);
     const inserted = await db.insert(item).values({
-      ...base, title: e.title ?? ex.title, publishedAt: e.publishedAt ?? ex.publishedAt,
+      // A listing link's text often runs the author, title, teaser and tags together, or is just "Read".
+      // The post's own title is cleaner; a feed's title is already clean.
+      ...base, title: (s.kind === "feed" ? e.title ?? ex.title : ex.title ?? e.title), publishedAt: e.publishedAt ?? ex.publishedAt,
       text: ex.text, status: "pending", isBackfill: backfill,
       statusDetail: backfill ? "published before monitoring started" : null,
     }).onConflictDoNothing().returning({ id: item.id });
