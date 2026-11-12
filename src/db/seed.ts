@@ -55,10 +55,12 @@ export async function seed(db: DB, publicUrl: string) {
   for (const t of TEAMS) {
     await db.insert(team).values({ key: t.key, name: t.name, lens: t.lens(), slackWebhookEnv: t.slackWebhookEnv }).onConflictDoNothing();
   }
-  if ((await db.select({ id: topic.id }).from(topic).limit(1)).length === 0) {
-    const topics = JSON.parse(owner("topics.json")) as { name: string; description: string; teamKeys: string[] }[];
-    await db.insert(topic).values(topics);
-  }
+  // A starting topic is added once, by name. One the owner removed stays removed (it still exists, inactive),
+  // and one the owner edited keeps the owner's version.
+  const topics = JSON.parse(owner("topics.json")) as { name: string; description: string; teamKeys: string[] }[];
+  const existing = new Set((await db.select({ name: topic.name }).from(topic)).map((t) => t.name));
+  const missing = topics.filter((t) => !existing.has(t.name));
+  if (missing.length) await db.insert(topic).values(missing);
   const canaryHost = new URL(publicUrl).hostname;
   const all = [
     ...COMPETITORS,
