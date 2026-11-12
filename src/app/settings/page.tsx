@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { competitor, ownerSuggestion, source, team, topic } from "@/db/schema";
+import { competitor, goldenItem, ownerSuggestion, source, team, topic } from "@/db/schema";
+import { GoldenItem } from "@/eval/golden";
 import { sourceHealth } from "@/pipeline/health";
 import { addCompetitor, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, updateTeam, updateTopic } from "./actions";
 import { toReview } from "@/eval/owner-golden";
@@ -26,6 +27,8 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const review = (await toReview(d))
     .map((r) => ({ ...r, votes: r.votes.filter((v) => canEditTeam(viewer, v.team)) }))
     .filter((r) => r.votes.length > 0);
+  // Exam items the owners already added; the same form updates the answer.
+  const inExam = (await d.select().from(goldenItem).orderBy(desc(goldenItem.createdAt))).map((r) => ({ itemId: r.fromItemId, g: GoldenItem.parse(r.data) }));
   const pending = await d.select().from(ownerSuggestion).where(eq(ownerSuggestion.status, "pending")).orderBy(desc(ownerSuggestion.id));
 
   return (
@@ -68,6 +71,30 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             </form>
           ))}
         </>
+      )}
+
+      {inExam.length > 0 && (
+        <details className="card" style={{ marginTop: 12 }}>
+          <summary><strong>In the exam from team votes ({inExam.length})</strong> <span className="muted">· change an answer you already added</span></summary>
+          {inExam.map(({ itemId, g }) => (
+            <form key={itemId} action={addToExamAction} style={{ borderTop: "1px solid var(--line)", paddingTop: 10, marginTop: 10 }}>
+              <input type="hidden" name="itemId" value={itemId} />
+              <div className="muted">{g.competitor}</div>
+              <strong><a href={g.url} target="_blank" rel="noreferrer">{g.title ?? g.url}</a></strong>
+              <div className="row" style={{ marginTop: 8 }}>
+                {teams.map((t) => (
+                  <label key={t.key}>{t.name}{" "}
+                    <select name={`level:${t.key}`} defaultValue={(g.expected as Record<string, string> | null)?.[t.key] ?? "none"} style={{ width: "auto" }}>
+                      {["alert", "digest", "log", "none"].map((l) => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <input type="text" name="note" defaultValue={g.note} placeholder="Why these levels" style={{ marginTop: 8 }} />
+              <button className="secondary" style={{ marginTop: 8 }}>Update the answer</button>
+            </form>
+          ))}
+        </details>
       )}
 
       <h2>Competitors</h2>
