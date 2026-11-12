@@ -21,5 +21,8 @@
     "mcp",
     "page-change",
     "multi-team"
+  ],
+  "expectedTopics": [
+    "MCP and agent skills security"
   ]
 }

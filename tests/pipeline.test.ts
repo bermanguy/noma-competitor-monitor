@@ -4,6 +4,9 @@ import { testDb } from "./helpers";
 import { competitor, delivery, item, judgment, source, team, topic } from "../src/db/schema";
 import type { DB } from "../src/db/client";
 
+// The digest goes out from 08:00 Israel time; the tests must not depend on when they run.
+vi.hoisted(() => { process.env.DIGEST_HOUR_LOCAL = "0"; });
+
 // The web, the model and Slack are replaced by fakes; everything else is the real pipeline on a real Postgres.
 const web = new Map<string, string>();
 vi.mock("../src/pipeline/fetch", async (orig) => ({

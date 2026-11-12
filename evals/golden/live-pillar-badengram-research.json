@@ -21,5 +21,8 @@
     "research",
     "supply-chain",
     "backfill-2026-11-12"
+  ],
+  "expectedTopics": [
+    "AI supply chain security"
   ]
 }

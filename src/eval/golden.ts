@@ -35,6 +35,8 @@ export const GoldenItem = z.object({
   })).default([]),
   /** When set, the judge must link this item to that id in <earlier> (same story). Graded apart from the levels. */
   expectedSameStoryAs: z.number().int().nullable().optional(),
+  /** Topics that fit this item. The judge passes if it tags at least one of them (for any team). Graded apart from the levels. */
+  expectedTopics: z.array(z.string()).optional(),
 });
 export type GoldenItem = z.infer<typeof GoldenItem>;
 

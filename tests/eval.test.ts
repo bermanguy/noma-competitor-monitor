@@ -1,10 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { loadGolden } from "../src/eval/golden";
-import { regressions, scoreTeams, type Outcome } from "../src/eval/score";
+import { digestPreview, regressions, scoreTeams, topicCheck, type Outcome } from "../src/eval/score";
 
 const o = (id: string, team: string, expected: Outcome["expected"], got: Outcome["got"], evidenceOk = true): Outcome => ({ id, team, expected, got, evidenceOk });
 
 describe("eval scoring", () => {
+  it("passes the topic check when any fitting topic is tagged, and previews each team's digest", () => {
+    expect(topicCheck("a", ["MCP and agent skills security", "AI red teaming"], ["ai red teaming", "Category language"]).hit).toBe(true);
+    expect(topicCheck("b", ["Category language"], [])).toMatchObject({ hit: false, got: [] });
+    const preview = digestPreview([
+      { ...o("x", "product", "alert", "alert"), topics: ["AI red teaming"] },
+      { ...o("y", "product", "log", "digest"), topics: [] },
+      o("z", "rnd", "none", "log"),
+    ]);
+    expect(preview).toContain("**product** (2 sent: 1 alerts)");
+    expect(preview).toContain("- _AI red teaming_ (1)\n  - 🔔 x");
+    expect(preview).toContain("- _Other_ (1)\n  - y (answer key: log)");
+    expect(preview).toContain("**rnd:** nothing would be sent.");
+  });
+
+
   it("counts alert and digest as sent, and scores precision and recall per team", () => {
     const [m] = scoreTeams([
       o("a", "marketing", "alert", "digest"), // sent, should be sent: hit, wrong level
