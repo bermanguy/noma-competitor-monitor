@@ -156,6 +156,7 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
           <div className="row" style={{ marginTop: 8 }}>
             <form action={runExam}><button disabled={exam.running}>{exam.running ? "Exam running…" : "Run the exam"}</button></form>
             {exam.last && <form action={saveExamBaseline}><button className="secondary">Use this result as the baseline</button></form>}
+            {exam.last && <a href="/ops/exam-report" className="muted">Download the report (one file, with the judge's reasons)</a>}
           </div>
         </div>
       </div>
