@@ -108,7 +108,7 @@ One call per item returns, for each team:
 
 The level definitions and each team's lens are owner-owned text files that are inserted into the prompt ([working agreement](process/working-agreement.md)). Four named levels with concrete anchors replace a 1–10 score, because models compress numeric scores toward the middle.
 
-Each team's noise setting maps to levels: **quiet** sends `alert` only; **normal** sends `alert` now and `digest` in the 09:00 Israel-time daily digest; nothing below `digest` is ever sent. Everything, including `log` and `none`, appears in the web feed with its reason.
+Each team's noise setting maps to levels: **quiet** sends `alert` only; **normal** sends `alert` now and `digest` in the morning daily digest (08:00 Israel time in winter, 09:00 in summer); nothing below `digest` is ever sent. Everything, including `log` and `none`, appears in the web feed with its reason.
 
 ## Output quality loop
 
@@ -135,7 +135,7 @@ flowchart LR
 
 ## Running unattended
 
-- **Scheduling:** Render cron job every 3 hours; the daily digest is a stage of the 09:00 run.
+- **Scheduling:** Render cron job every 3 hours (UTC). The daily digest goes out with the first run from 08:00 Israel time, which is 08:00 in winter and 09:00 in summer. The owner chose the simple schedule over an exact 09:00 year-round, which would need an hourly wake-up.
 - **Idempotency:** every stage writes keyed rows (source + URL, item + team, delivery key), so re-running a run is always safe.
 - **Silent breakage:** per-source baselines for items per week and extracted text length; "quiet for longer than usual" and "content shrank" alerts go to #ops; the owner sees a plain Healthy / Needs attention badge.
 - **Missed runs:** each completed run pings an external heartbeat; no ping in 4 hours alerts #ops.
