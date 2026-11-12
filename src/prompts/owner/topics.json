@@ -1,0 +1,7 @@
+[
+  { "name": "MCP security", "description": "Model Context Protocol servers, gateways, tool permissions and attacks through MCP", "teamKeys": ["product", "rnd"] },
+  { "name": "Coding agents", "description": "Security for AI coding assistants and agents on developer endpoints", "teamKeys": ["product", "rnd", "marketing"] },
+  { "name": "Agent runtime protection", "description": "Inline enforcement, guardrails and detection while agents run", "teamKeys": ["product", "rnd"] },
+  { "name": "Category language", "description": "Terms competitors use to name the market, such as AI-SPM, agentic security, AI governance", "teamKeys": ["marketing"] },
+  { "name": "Funding and M&A", "description": "Funding rounds, acquisitions and partnerships", "teamKeys": ["marketing", "product"] }
+]
