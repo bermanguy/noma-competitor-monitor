@@ -1,0 +1,4 @@
+Noma Security sells one agent security and governance platform for enterprises, covering agents employees run on their machines (endpoint and coding agents), agents on SaaS platforms, and agents engineers build in the cloud.
+Products: AI-SPM (discover agents, MCP servers, skills, models and tools, and rank their risk), AI-DR (detect and stop risky agent behaviour at runtime), Agent Access Control (decide what each agent is allowed to do), AI Red Teaming (find agent weaknesses before attackers do).
+Solutions it markets: AI asset discovery, agent runtime security, agentic identity, MCP security, AI agent control plane, AI supply chain security, AI compliance and regulation.
+Integrations it names: Microsoft Copilot, GitHub Copilot, Cursor, Claude, Google Gemini, Salesforce, AWS, Azure, Google Cloud, Hugging Face, LangChain, CrewAI, CrowdStrike, MCP.

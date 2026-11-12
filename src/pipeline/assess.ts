@@ -6,6 +6,7 @@ import { PROMPT_VERSION } from "../prompts/scaffold";
 import { judgeItem, type JudgeResult } from "./judge";
 import { BudgetExceeded, Refused } from "./llm";
 import { quotesInSource } from "./text";
+import { getOwnerTexts } from "../lib/owner-text";
 
 /** Recent rated items, per team, shown to the model as examples of what this team found useful or not. */
 export async function ratedExamples(db: DB, limitPerTeam = 4): Promise<string> {
@@ -32,7 +33,7 @@ export async function loadContext(db: DB) {
     name: t.name,
     description: `${t.description} (matters to: ${t.teamKeys.join(", ")})`,
   }));
-  return { teams, topics, examples: await ratedExamples(db) };
+  return { teams, topics, examples: await ratedExamples(db), owner: await getOwnerTexts(db) };
 }
 
 /** Stores one judgment per team. A judgment whose quotes are not in the source is kept but never sent. */
@@ -70,6 +71,7 @@ export async function assessPending(db: DB, runId: number) {
       const result = await judgeItem(db, runId, {
         competitor: c.name, kind: i.kind, pageType, url: i.url, title: i.title, publishedAt: i.publishedAt,
         text: i.text, diff: i.diff, teams: ctx.teams, topics: ctx.topics, examples: ctx.examples,
+        company: ctx.owner.company, levels: ctx.owner.levels, pageGuidance: pageType === "pricing" ? ctx.owner["page.pricing"] : undefined,
       });
       const sourceText = i.kind === "page_change" ? `${i.text}\n${i.beforeText ?? ""}` : i.text;
       await saveJudgments(db, i.id, sourceText, result, ctx.teams.map((t) => t.key), config.judgeModel);
