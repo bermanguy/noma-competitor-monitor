@@ -15,7 +15,7 @@
     "product": "log",
     "rnd": "digest"
   },
-  "labelledBy": "draft",
+  "labelledBy": "owner",
   "note": "An explainer that describes Lasso's inline alignment and behavioural detection: useful technique for R&D, little new for the others.",
   "tags": [
     "explainer",

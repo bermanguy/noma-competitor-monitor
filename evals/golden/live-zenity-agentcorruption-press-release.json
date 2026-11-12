@@ -15,7 +15,7 @@
     "product": "log",
     "rnd": "digest"
   },
-  "labelledBy": "draft",
+  "labelledBy": "owner",
   "note": "Press release for the same research as the Labs post, with less detail: Marketing this week, R&D digest (the Labs post is the one to alert on).",
   "tags": [
     "research",

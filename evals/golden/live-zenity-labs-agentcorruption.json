@@ -15,8 +15,8 @@
     "product": "log",
     "rnd": "alert"
   },
-  "labelledBy": "draft",
-  "note": "Full technical write-up of the AgentCorruption chain on AWS AgentCore: R&D today. Headline research for Marketing.",
+  "labelledBy": "owner",
+  "note": "Full technical write-up of the AgentCorruption chain on AWS AgentCore: R&D today. Headline research for Marketing. Owner: rnd should indeed read it today because they might take actions immediately to avoid similar incidents in Noma",
   "tags": [
     "research",
     "cloud",

@@ -15,7 +15,7 @@
     "product": "log",
     "rnd": "alert"
   },
-  "labelledBy": "draft",
+  "labelledBy": "owner",
   "note": "Threat research with concrete attacker use of Cursor, shared MCP config and MCP bridges to Burp: R&D should see it today. A research headline for Marketing.",
   "tags": [
     "research",
