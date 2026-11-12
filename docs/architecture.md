@@ -69,6 +69,15 @@ flowchart TD
 2. **Normalise, then require a minimum change.** Dates, counters and whitespace are normalised; a change below a minimum size (tuned in the spike) is ignored.
 3. **Change gate.** The before/after text goes to a small model that answers "meaningful or cosmetic" with the changed words quoted. Only meaningful changes reach the judge, which sees the diff and the surrounding text, not the whole page.
 
+**Page types: a skill per kind of page.** Each watched page has a type that decides how it is read and compared. `general` is the path above. `pricing` replaces the text filters with a structured reading:
+
+1. When the page text changed, a model (Claude Sonnet 5.5) reads it into plans, each with its price per billing period (monthly, yearly, contact sales) and its features. The previous reading is passed in, so unchanged plans read the same way twice.
+2. Code checks that every price in the reading appears on the page. An unverifiable reading fails the source visibly and is never stored.
+3. Code compares the two readings plan by plan: plan added or removed, price changed per billing period, feature added, removed or moved between plans. A change counts only if the page text backs it up (the phrase occurs more or less often than before), so two slightly different readings of the same page produce nothing.
+4. No minimum size applies: "$79" becoming "$89" is the most important change on the page. Wording that changes no plan, price or feature is logged as cosmetic.
+
+The owner picks the type when adding a page, and owns the plain-English note on what matters in a pricing change (`src/prompts/owner/page.pricing.md`), which is added to the judge prompt. None of the four competitors publishes prices, so the demo uses a pricing canary with a monthly/yearly toggle. New types (changelog, integrations) follow the same shape: a reader, a verifier and a comparer.
+
 The canary page is served by our own web app and editable from the operator surface, so the demo and the operator can trigger a real change end to end on demand.
 
 ## Which model does what
@@ -77,6 +86,7 @@ The canary page is served by our own web app and editable from the operator surf
 | --- | --- | --- | --- | --- |
 | New-post detection, link discovery, routing | None (code) | Exact set and rule operations; a model would only add error | | $0 |
 | Change gate (page changes) | Claude Haiku 5.5 (`claude-haiku-5-5`), $0.10 / $0.50 per million tokens in / out | Binary decision on short text; high volume relative to value | ~40 | < $0.01 |
+| Pricing page reading | Claude Sonnet 5.5 (`claude-sonnet-5-5`), $2 / $10 | Structured extraction of plans and prices; runs only when a pricing page's text changed, and every price is verified in code | rare | < $0.05 |
 | Per-team judgment | Claude Opus 5.5 (`claude-opus-5-5`), $4 / $20 | Nuanced, evidence-bound judgment is the product; at ~10 to 20 items a day the cost is negligible | 10–20 | ~$0.50–1.00 |
 | Same judgment, cheaper candidate | Claude Sonnet 5.5 (`claude-sonnet-5-5`), $2 / $10 | Run against the golden set too; switch if per-team precision holds | eval only | |
 | Grading quality | None | Graded against hand-labelled examples, not by a model grading a model | | $0 |
