@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import type { DB } from "./client";
-import { competitor, source, team, topic, type SourceKind } from "./schema";
+import { competitor, source, team, topic, type PageType, type SourceKind } from "./schema";
 
 const owner = (f: string) => readFileSync(join(process.cwd(), "src/prompts/owner", f), "utf8").trim();
 
@@ -12,7 +12,7 @@ export const TEAMS = [
   { key: "rnd", name: "R&D", lens: () => owner("lens.rnd.md"), slackWebhookEnv: "SLACK_WEBHOOK_RND" },
 ];
 
-interface SeedSource { kind: SourceKind; url: string; label: string; linkPrefix?: string }
+interface SeedSource { kind: SourceKind; url: string; label: string; linkPrefix?: string; pageType?: PageType }
 
 /**
  * Decision 0001. URLs checked against each site's navigation on 2026-11-12.
@@ -62,7 +62,10 @@ export async function seed(db: DB, publicUrl: string) {
   const canaryHost = new URL(publicUrl).hostname;
   const all = [
     ...COMPETITORS,
-    { name: "Canary (test page)", domain: canaryHost, sources: [{ kind: "page" as const, url: `${publicUrl}/canary`, label: "Canary page" }] },
+    { name: "Canary (test page)", domain: canaryHost, sources: [
+      { kind: "page" as const, url: `${publicUrl}/canary`, label: "Canary page" },
+      { kind: "page" as const, url: `${publicUrl}/canary/pricing`, label: "Canary pricing", pageType: "pricing" as const },
+    ] },
   ];
   for (const c of all) {
     await db.insert(competitor).values({ name: c.name, domain: c.domain }).onConflictDoNothing();

@@ -2,6 +2,8 @@
 export const config = {
   judgeModel: process.env.JUDGE_MODEL ?? "claude-opus-5-5",
   gateModel: process.env.GATE_MODEL ?? "claude-haiku-5-5",
+  /** Reads a pricing page into plans, prices and features. Runs only when the page text changed. */
+  pricingModel: process.env.PRICING_MODEL ?? "claude-sonnet-5-5",
   budgetPerRunUsd: Number(process.env.BUDGET_PER_RUN_USD ?? 3),
   budgetPerMonthUsd: Number(process.env.BUDGET_PER_MONTH_USD ?? 40),
   minChangeChars: Number(process.env.MIN_CHANGE_CHARS ?? 40),

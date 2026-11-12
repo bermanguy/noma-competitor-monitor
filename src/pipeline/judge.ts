@@ -5,9 +5,12 @@ import { config } from "../config";
 import type { DB } from "../db/client";
 import { GATE_SYSTEM, JUDGE_SYSTEM, teamsBlock } from "../prompts/scaffold";
 import { structuredCall } from "./llm";
+import type { PageType } from "../db/schema";
 
-const LEVELS_FILE = join(process.cwd(), "src/prompts/owner/levels.md");
-export const levelDefinitions = () => readFileSync(LEVELS_FILE, "utf8").trim();
+const OWNER_DIR = join(process.cwd(), "src/prompts/owner");
+export const levelDefinitions = () => readFileSync(join(OWNER_DIR, "levels.md"), "utf8").trim();
+/** Owner-written guidance for a page type's skill, added to the judge prompt for that page type's changes. */
+export const pageTypeGuidance = (pageType: string) => (pageType === "general" ? "" : readFileSync(join(OWNER_DIR, `page.${pageType}.md`), "utf8").trim());
 
 export const GateResult = z.object({
   meaningful: z.boolean(),
@@ -41,6 +44,7 @@ export type JudgeResult = z.infer<typeof JudgeResult>;
 export interface JudgeInput {
   competitor: string;
   kind: "post" | "page_change";
+  pageType?: PageType;
   url: string;
   title: string | null;
   publishedAt: Date | null;
@@ -52,9 +56,10 @@ export interface JudgeInput {
 }
 
 export function buildJudgeUser(i: JudgeInput): string {
+  const guidance = i.kind === "page_change" && i.pageType ? pageTypeGuidance(i.pageType) : "";
   const body =
     i.kind === "page_change"
-      ? `This is a change to a page the competitor already had. Judge the change, using the page for context.\n<change>\n${i.diff}\n</change>\n<source>\n${i.text.slice(0, 30000)}\n</source>`
+      ? `${guidance ? `<page_type>\n${guidance}\n</page_type>\n` : ""}This is a change to a page the competitor already had. Judge the change, using the page for context.\n<change>\n${i.diff}\n</change>\n<source>\n${i.text.slice(0, 30000)}\n</source>`
       : `<source>\n${i.text.slice(0, 40000)}\n</source>`;
   return [
     `<levels>\n${levelDefinitions()}\n</levels>`,

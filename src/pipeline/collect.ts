@@ -5,6 +5,7 @@ import { competitor, item, snapshot, source, sourceRun } from "../db/schema";
 import { extractListingLinks, extractMain, parseFeed } from "./extract";
 import { fetchSource } from "./fetch";
 import { gateChange } from "./judge";
+import { diffPricing, extractPricing, formatPricingChanges, verifyPricing, type PricingSnapshot } from "./pricing";
 import { diffText, formatDiff, hash, normalizeText } from "./text";
 
 type Source = typeof source.$inferSelect;
@@ -120,6 +121,7 @@ async function collectPosts(db: DB, s: Source, c: Competitor, body: string, fina
 async function collectPage(db: DB, runId: number, s: Source, c: Competitor, body: string, finalUrl: string) {
   const ex = extractMain(body, finalUrl, "page");
   if (ex.text.length < 100) throw new Error(`page text too short (${ex.text.length} chars); the page may be blocked or empty`);
+  if (s.pageType === "pricing") return collectPricing(db, runId, s, c, ex);
   const norm = normalizeText(ex.text);
   const h = hash(norm);
   const [last] = await db.select().from(snapshot).where(eq(snapshot.sourceId, s.id)).orderBy(desc(snapshot.fetchedAt)).limit(1);
@@ -150,6 +152,40 @@ async function collectPage(db: DB, runId: number, s: Source, c: Competitor, body
     dedupeKey: `page:${s.id}:${last.normalizedHash}:${h}`, isCanary: isCanary(s),
   }).onConflictDoNothing().returning({ id: item.id });
   return { newItems: gate.meaningful ? inserted.length : 0, textLength: ex.text.length };
+}
+
+/**
+ * Pricing pages: the page is read into plans, prices and features, and compared field by field.
+ * The model reads only when the text changed; code verifies every price and decides what changed.
+ */
+async function collectPricing(db: DB, runId: number, s: Source, c: Competitor, ex: { title: string | null; text: string }) {
+  const h = hash(normalizeText(ex.text));
+  const [last] = await db.select().from(snapshot).where(eq(snapshot.sourceId, s.id)).orderBy(desc(snapshot.fetchedAt)).limit(1);
+  if (last && last.normalizedHash === h && last.structured) return { newItems: 0, textLength: ex.text.length };
+  if (last && ex.text.length < last.text.length * 0.4) {
+    throw new Error(`page text shrank from ${last.text.length} to ${ex.text.length} chars; check the source before trusting changes`);
+  }
+
+  const previous = (last?.structured as PricingSnapshot | null) ?? null;
+  const reading = await extractPricing(db, runId, { competitor: c.name, url: s.url, text: ex.text, previous });
+  const problems = verifyPricing(reading, ex.text);
+  // An unverifiable reading never becomes a snapshot; the source fails visibly and the next run reads again.
+  if (problems.length) throw new Error(`pricing reading not verified: ${problems.slice(0, 3).join("; ")}`);
+  if (!reading.hasPricing) throw new Error("no plans found on the pricing page; it may have moved or need the headless browser");
+
+  await db.insert(snapshot).values({ sourceId: s.id, url: s.url, title: ex.title, text: ex.text, normalizedHash: h, structured: reading });
+  if (!last || !previous) return { newItems: 0, textLength: ex.text.length }; // first reading is the baseline
+
+  const changes = diffPricing(previous, reading, last.text, ex.text);
+  const inserted = await db.insert(item).values({
+    sourceId: s.id, competitorId: c.id, kind: "page_change", url: s.url,
+    title: `${s.label}: ${changes.length ? `${changes.length} pricing change${changes.length > 1 ? "s" : ""}` : "wording changed"}`,
+    text: ex.text, beforeText: last.text, diff: changes.length ? formatPricingChanges(changes) : formatDiff(diffText(normalizeText(last.text), normalizeText(ex.text))),
+    gateReason: changes.length ? "Plans, prices or features changed (compared field by field)" : "Text changed, but no plan, price or feature changed",
+    status: changes.length ? "pending" : "cosmetic",
+    dedupeKey: `page:${s.id}:${last.normalizedHash}:${h}`, isCanary: isCanary(s),
+  }).onConflictDoNothing().returning({ id: item.id });
+  return { newItems: changes.length ? inserted.length : 0, textLength: ex.text.length };
 }
 
 function isCanary(s: Source) {
