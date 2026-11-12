@@ -171,3 +171,10 @@ export const usage = pgTable("usage", {
   costUsd: real("cost_usd").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Small key-value settings, such as the canary page text the operator edits. */
+export const setting = pgTable("setting", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

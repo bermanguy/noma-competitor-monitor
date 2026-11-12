@@ -11,7 +11,9 @@ const QUIET_DAYS = 30;
 
 export function sourceHealth(s: typeof source.$inferSelect, now = new Date()): { health: Health; reason: string } {
   if (!s.baselinedAt && s.consecutiveFailures === 0) return { health: "new", reason: "not crawled yet" };
-  if (s.consecutiveFailures >= 2) return { health: "failing", reason: s.lastError ?? "failing" };
+  if (s.consecutiveFailures >= 2 || (!s.lastSuccessAt && s.consecutiveFailures >= 1)) {
+    return { health: "failing", reason: s.lastError ?? "failing" };
+  }
   if (s.kind !== "page") {
     const since = s.lastNewItemAt ?? s.baselinedAt;
     if (since && now.getTime() - since.getTime() > QUIET_DAYS * 864e5) {

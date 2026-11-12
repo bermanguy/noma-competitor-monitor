@@ -85,7 +85,9 @@ export async function fetchSource(url: string, mode: FetchMode): Promise<FetchRe
       last = mode === "browser" ? await fetchBrowser(url) : await fetchHttp(url);
       if (last.ok || last.status < 500) return last;
     } catch (e) {
-      last = { ok: false, status: 0, url, body: "", contentType: "", error: (e as Error).message };
+      const err = e as Error & { cause?: { message?: string; code?: string } };
+      const detail = err.cause?.code ?? err.cause?.message;
+      last = { ok: false, status: 0, url, body: "", contentType: "", error: detail ? `${err.message}: ${detail}` : err.message };
     }
     await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
   }
