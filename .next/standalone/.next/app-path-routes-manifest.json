@@ -1,0 +1,10 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/health/route": "/api/health",
+  "/canary/page": "/canary",
+  "/feedback/[id]/page": "/feedback/[id]",
+  "/ops/page": "/ops",
+  "/page": "/",
+  "/settings/page": "/settings"
+}

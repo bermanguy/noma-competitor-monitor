@@ -1,0 +1,15 @@
+{
+  "node": {
+    "40aa607180fd1b45dd19cd3aa76b9d4b44c78c2dcb": {
+      "workers": {
+        "app/feedback/[id]/page": {
+          "moduleId": 94241,
+          "async": true
+        }
+      },
+      "exportedName": "submitFeedback",
+      "filename": "src/app/feedback/[id]/actions.ts"
+    }
+  },
+  "edge": {}
+}

@@ -4,7 +4,7 @@ Status: draft for owner review, 2026-11-12. Scope is fixed by [scope.md](scope.m
 
 ## In one paragraph
 
-One TypeScript codebase deployed twice on Render: a **web app** (Next.js) with the owner and operator surfaces, and a **pipeline worker** that a Render cron job starts every 3 hours. Both share one Postgres database on Neon. The worker fetches each source, detects new posts and changed pages, asks Claude to judge each item separately for every team, and posts to Slack. Every stage writes its result to the database before the next stage reads it, so any stage can fail and be retried without redoing or double-sending the others.
+One TypeScript codebase deployed twice on Render: a **web app** (Next.js) with the owner and operator surfaces, and a **pipeline worker** that a Render cron job starts every 3 hours. Both share one Render Postgres database. The worker fetches each source, detects new posts and changed pages, asks Claude to judge each item separately for every team, and posts to Slack. Every stage writes its result to the database before the next stage reads it, so any stage can fail and be retried without redoing or double-sending the others.
 
 ```mermaid
 flowchart LR
@@ -15,7 +15,7 @@ flowchart LR
   W -->|fetch| SITES[(Competitor sites<br/>+ canary page)]
   W -->|judge| CLAUDE[Claude API]
   W -->|post| SLACK[Slack<br/>#mkt #product #rnd #ops]
-  W <--> DB[(Postgres on Neon)]
+  W <--> DB[(Render Postgres)]
   WEB <--> DB
   OWNER((Owner)) --> WEB
   OPS((Operator)) --> WEB
@@ -61,7 +61,9 @@ flowchart TD
 
 **New posts (feeds and blog listings).** Prefer the RSS/Atom feed when one exists; otherwise read the blog listing page and collect links under its path (for example `/blog/...`). A post is new when its canonical URL has never been seen. No model is used for detection: it is a set difference, and code does it exactly. Each new post is fetched, its main text extracted, and passed to the judge. Volume is a few posts per competitor per week, so every new post is judged.
 
-**Quiet page changes (homepage, product page).** This is the hard path; Visualping reports that 83% of raw page changes are not important ([market scan](research/market-scan.md)). Three filters, cheapest first:
+**First check of a competitor.** Everything already published becomes silent history, except the **latest 3 posts** per competitor, which are judged and labelled "published before monitoring started". They go into each team's first digest, never as urgent alerts, so a new competitor shows value on day one without pretending old posts are new.
+
+**Quiet page changes (homepage, platform, integrations, changelog).** This is the hard path; Visualping reports that 83% of raw page changes are not important ([market scan](research/market-scan.md)). Three filters, cheapest first:
 
 1. **Extract, don't diff HTML.** Only the main text is compared, so navigation, footers, cookie banners and scripts never count.
 2. **Normalise, then require a minimum change.** Dates, counters and whitespace are normalised; a change below a minimum size (tuned in the spike) is ignored.
@@ -113,6 +115,8 @@ flowchart LR
   FB --> GS
   FB --> UR[Usefulness rate per team<br/>on the operator surface]
 ```
+
+**When evals run.** The golden set is an exam with an answer key, run *before* a change ships: `npm run eval` grades the judge on every labelled item and writes a per-team report to `evals/reports/`. A prompt, lens, level or model change merges only if per-team precision does not drop. Live feedback from Slack is the check *after* shipping, and the two feed each other.
 
 - **Before launch:** the golden set is labelled from real items collected in the spike: what happened, the evidence, which teams should get it and at what level.
 - **On every change** to prompts, lenses, levels or models, CI runs the eval and the PR shows the per-team numbers before and after.
@@ -167,9 +171,9 @@ docs/               scope, demo script, architecture, decisions, research
 | More teams or topics | One judgment call covers all teams | Prompt size; split into per-team calls past ~6 teams |
 | More volume per team | Levels and caps | Clustering duplicates across sources (embeddings) |
 
-## Confirm-first choices (need Guy)
+## Confirm-first choices (confirmed by Guy, 2026-11-12)
 
-1. **Change-detection approach:** extracted main text, normalised, minimum change size, then a small-model gate. Recommended.
-2. **Filtering before the LLM:** every new post is judged; page changes pass the deterministic filters and the gate first. Recommended.
-3. **Delivery mechanism:** Slack, one channel per team, immediate `alert` plus daily digest. Already agreed.
-4. **Rubric structure:** four named levels per team with owner-written anchors, instead of a numeric score. Recommended.
+1. **Change-detection approach:** extracted main text, normalised, minimum change size, then a small-model gate.
+2. **Filtering before the LLM:** every new post is judged; page changes pass the deterministic filters and the gate first.
+3. **Delivery mechanism:** Slack, one channel per team, immediate `alert` plus daily digest.
+4. **Rubric structure:** four named levels per team with owner-written anchors, instead of a numeric score.

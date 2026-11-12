@@ -1,0 +1,55 @@
+{
+  "node": {
+    "40453b98dd2c7cddc7a23ae2fa92adaa7ff1ed37e2": {
+      "workers": {
+        "app/settings/page": {
+          "moduleId": 92787,
+          "async": true
+        }
+      },
+      "exportedName": "setCompetitorActive",
+      "filename": "src/app/settings/actions.ts"
+    },
+    "4089826195e8fd0c326c0547cde04797fba385d88d": {
+      "workers": {
+        "app/settings/page": {
+          "moduleId": 92787,
+          "async": true
+        }
+      },
+      "exportedName": "addCompetitor",
+      "filename": "src/app/settings/actions.ts"
+    },
+    "40c9ff7be9ceb882b40ff5e7737a20e57238db6424": {
+      "workers": {
+        "app/settings/page": {
+          "moduleId": 92787,
+          "async": true
+        }
+      },
+      "exportedName": "updateTeam",
+      "filename": "src/app/settings/actions.ts"
+    },
+    "40dd29ae6ea3b37df31bb71ae3b50a3c30b20c20c1": {
+      "workers": {
+        "app/settings/page": {
+          "moduleId": 92787,
+          "async": true
+        }
+      },
+      "exportedName": "removeTopic",
+      "filename": "src/app/settings/actions.ts"
+    },
+    "40fc3b309efea48ebbd34af2a97ca30684283cd5d2": {
+      "workers": {
+        "app/settings/page": {
+          "moduleId": 92787,
+          "async": true
+        }
+      },
+      "exportedName": "addTopic",
+      "filename": "src/app/settings/actions.ts"
+    }
+  },
+  "edge": {}
+}
