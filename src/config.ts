@@ -11,7 +11,8 @@ export const config = {
   /** On a post source's first check, the latest N posts are judged (labelled) so a new competitor shows value on day one. */
   backfillPosts: Number(process.env.BACKFILL_POSTS ?? 3),
   maxPostsPerSourcePerRun: Number(process.env.MAX_POSTS_PER_SOURCE_PER_RUN ?? 10),
-  digestHourLocal: Number(process.env.DIGEST_HOUR_LOCAL ?? 9),
+  /** The digest goes with the first run at or after this local hour. Runs are every 3 hours UTC, so in Israel: 08:00 in winter, 09:00 in summer. */
+  digestHourLocal: Number(process.env.DIGEST_HOUR_LOCAL ?? 8),
   timezone: process.env.APP_TIMEZONE ?? "Asia/Jerusalem",
   publicUrl: (process.env.PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
   heartbeatUrl: process.env.HEARTBEAT_URL,
