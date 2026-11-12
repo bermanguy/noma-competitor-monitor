@@ -1,0 +1,25 @@
+{
+  "id": "authored-pricing-team-raise",
+  "origin": "authored",
+  "competitor": "Example Co (authored)",
+  "kind": "page_change",
+  "pageType": "pricing",
+  "url": "https://example.com/pricing",
+  "title": "Pricing",
+  "publishedAt": null,
+  "text": "Pricing\nStarter\n$29 per user / month\n$24 per user / month, billed annually\nUp to 10 AI agents\nEmail support\nTeam\n$89 per user / month\n$66 per user / month, billed annually\nUp to 100 AI agents\nRuntime guardrails\nMCP server inventory\nEnterprise\nContact sales\nUnlimited AI agents\nSSO and SCIM",
+  "diff": "Team (monthly): $79 per user / month → $89 per user / month\nTeam: added \"MCP server inventory\"",
+  "beforeText": "Pricing\nStarter\n$29 per user / month\n$24 per user / month, billed annually\nUp to 10 AI agents\nEmail support\nTeam\n$79 per user / month\n$66 per user / month, billed annually\nUp to 100 AI agents\nRuntime guardrails\nEnterprise\nContact sales\nUnlimited AI agents\nSSO and SCIM",
+  "expected": {
+    "marketing": "digest",
+    "product": "alert",
+    "rnd": "none"
+  },
+  "labelledBy": "draft",
+  "note": "Team plan monthly price up from $79 to $89, and MCP server inventory added to Team. Packaging and pricing are Product's call today; Marketing should know this week; nothing technical for R&D.",
+  "tags": [
+    "pricing",
+    "page-change",
+    "multi-team"
+  ]
+}

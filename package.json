@@ -15,7 +15,8 @@
     "seed": "tsx scripts/seed.ts",
     "eval": "tsx scripts/eval.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "golden:export": "tsx scripts/golden-export.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

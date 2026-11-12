@@ -1,0 +1,25 @@
+{
+  "id": "authored-technique-tool-poisoning",
+  "origin": "authored",
+  "competitor": "Example Co (authored)",
+  "kind": "post",
+  "pageType": "general",
+  "url": "https://example.com/blog/detecting-tool-poisoning",
+  "title": "How we detect MCP tool poisoning with description fingerprinting",
+  "publishedAt": "2026-11-01",
+  "text": "How we detect MCP tool poisoning with description fingerprinting\nNovember 3, 2026\nTool poisoning hides instructions inside an MCP tool's description, which the agent reads but the user never sees. Our detector fingerprints each tool description when a server is first approved and compares every later listing against that fingerprint. A changed description is held until a person re-approves it. We also run a small classifier over descriptions looking for imperative phrases aimed at the model, such as instructions to read local files or to send data to another tool. In our tests across 1,200 public MCP servers, 31 changed a tool description after first install.",
+  "diff": null,
+  "beforeText": null,
+  "expected": {
+    "marketing": "log",
+    "product": "digest",
+    "rnd": "alert"
+  },
+  "labelledBy": "draft",
+  "note": "Concrete detection technique and data on MCP tool poisoning: R&D should see it today. Product learns of a capability worth tracking this week. No change in positioning, so only a log for Marketing.",
+  "tags": [
+    "mcp",
+    "technical",
+    "post"
+  ]
+}

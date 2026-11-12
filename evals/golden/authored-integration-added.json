@@ -1,0 +1,24 @@
+{
+  "id": "authored-integration-added",
+  "origin": "authored",
+  "competitor": "Example Co (authored)",
+  "kind": "page_change",
+  "pageType": "general",
+  "url": "https://example.com/platform",
+  "title": "Platform",
+  "publishedAt": null,
+  "text": "Platform\nDiscover: find every AI agent, model and dataset across SaaS and cloud.\nProtect: inspect prompts and responses at runtime and block data leaks.\nGovern: map agents to owners and policies.\nIntegrations: Microsoft Copilot Studio, Salesforce Agentforce, AWS Bedrock, ServiceNow AI Agents.",
+  "diff": "- Integrations: Microsoft Copilot Studio, Salesforce Agentforce, AWS Bedrock.\n+ Integrations: Microsoft Copilot Studio, Salesforce Agentforce, AWS Bedrock, ServiceNow AI Agents.",
+  "beforeText": "Platform\nDiscover: find every AI agent, model and dataset across SaaS and cloud.\nProtect: inspect prompts and responses at runtime and block data leaks.\nGovern: map agents to owners and policies.\nIntegrations: Microsoft Copilot Studio, Salesforce Agentforce, AWS Bedrock.",
+  "expected": {
+    "marketing": "digest",
+    "product": "digest",
+    "rnd": "log"
+  },
+  "labelledBy": "draft",
+  "note": "One new supported platform (ServiceNow AI Agents) added to the integrations list, with no detail. Worth knowing this week for Product and Marketing; nothing technical for R&D.",
+  "tags": [
+    "integration",
+    "page-change"
+  ]
+}

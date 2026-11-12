@@ -1,0 +1,25 @@
+{
+  "id": "authored-funding-series-b",
+  "origin": "authored",
+  "competitor": "Example Co (authored)",
+  "kind": "post",
+  "pageType": "general",
+  "url": "https://example.com/blog/series-b",
+  "title": "Example Co raises $50M Series B to secure the agentic enterprise",
+  "publishedAt": "2026-11-01",
+  "text": "Example Co raises $50M Series B to secure the agentic enterprise\nNovember 1, 2026\nExample Co today announced a $50 million Series B round led by Northwind Ventures, bringing total funding to $72 million. The company will use the funds to expand its go-to-market in Europe and grow its research team. \"Every enterprise is deploying agents faster than it can secure them,\" said the CEO. Example Co says it now protects more than 200 enterprise customers.",
+  "diff": null,
+  "beforeText": null,
+  "expected": {
+    "marketing": "alert",
+    "product": "digest",
+    "rnd": "none"
+  },
+  "labelledBy": "draft",
+  "note": "Funding and a European expansion are moments buyers ask about (Marketing today). The move into Europe is a direction signal for Product. No technical detail for R&D.",
+  "tags": [
+    "funding",
+    "post",
+    "multi-team"
+  ]
+}

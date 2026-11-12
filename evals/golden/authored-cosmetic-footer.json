@@ -1,0 +1,24 @@
+{
+  "id": "authored-cosmetic-footer",
+  "origin": "authored",
+  "competitor": "Example Co (authored)",
+  "kind": "page_change",
+  "pageType": "general",
+  "url": "https://example.com/",
+  "title": "Example Co",
+  "publishedAt": null,
+  "text": "Example Co\nThe AI Agent Security Platform\nDiscover, protect and govern every AI agent across your enterprise.\nTrusted by Fortune 500 security teams.\nBook a demo\n© 2026 Example Co. All rights reserved.\nThis site uses cookies. Manage preferences.",
+  "diff": "- © 2025 Example Co. All rights reserved.\n- We use cookies to improve your experience.\n+ © 2026 Example Co. All rights reserved.\n+ This site uses cookies. Manage preferences.",
+  "beforeText": "Example Co\nThe AI Agent Security Platform\nDiscover, protect and govern every AI agent across your enterprise.\nTrusted by Fortune 500 security teams.\nBook a demo\n© 2025 Example Co. All rights reserved.\nWe use cookies to improve your experience.",
+  "expected": {
+    "marketing": "none",
+    "product": "none",
+    "rnd": "none"
+  },
+  "labelledBy": "draft",
+  "note": "Copyright year and cookie banner wording only. Nothing about what the company offers changed.",
+  "tags": [
+    "cosmetic",
+    "page-change"
+  ]
+}
