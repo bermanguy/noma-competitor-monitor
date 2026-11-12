@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { VIEW_AS_COOKIE, isBuilderPath } from "@/lib/view-as";
+import { VIEW_AS_COOKIE, isBuilderPath, viewerFor } from "@/lib/view-as";
 
 /**
  * Two surfaces, two passwords. The owner password opens the owner surface (feed, settings); the
@@ -21,10 +21,10 @@ export function proxy(req: NextRequest) {
   });
 }
 
-/** The builder area is shown only when viewing as the builder. */
+/** The builder area is shown only when viewing as the builder; opening it switches the view to the builder. */
 function viewAs(req: NextRequest) {
-  if (isBuilderPath(req.nextUrl.pathname) && req.cookies.get(VIEW_AS_COOKIE)?.value !== "builder") {
-    return NextResponse.redirect(new URL(`/view-as?role=builder&next=${encodeURIComponent(req.nextUrl.pathname)}`, req.url));
+  if (isBuilderPath(req.nextUrl.pathname) && viewerFor(req.cookies.get(VIEW_AS_COOKIE)?.value).role !== "builder") {
+    return NextResponse.redirect(new URL(`/view-as?as=builder&next=${encodeURIComponent(req.nextUrl.pathname)}`, req.url));
   }
   return NextResponse.next();
 }

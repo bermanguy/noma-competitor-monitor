@@ -10,6 +10,8 @@ import { OWNER_TEXTS, restoreOwnerText, setOwnerText, type OwnerTextKey } from "
 import { applySuggestion, dismissSuggestion } from "@/pipeline/own-site";
 import { addToExam } from "@/eval/owner-golden";
 import type { Level } from "@/db/schema";
+import { currentViewer } from "@/lib/viewer";
+import { canEditTeam } from "@/lib/view-as";
 
 export async function addCompetitor(form: FormData) {
   const name = String(form.get("name") ?? "").trim();
@@ -92,6 +94,7 @@ export async function removeTopic(form: FormData) {
 export async function updateTeam(form: FormData) {
   const lens = String(form.get("lens") ?? "").trim();
   const noise = (form.get("noise") === "quiet" ? "quiet" : "normal") as NoiseLevel;
+  if (!canEditTeam(await currentViewer(), String(form.get("key")))) redirect("/settings?error=" + encodeURIComponent("Only that team's owner (or the builder) can change its description"));
   if (lens.length < 40) redirect("/settings?error=" + encodeURIComponent("Describe what the team cares about in at least a sentence or two"));
   await db().update(team).set({ lens, noise }).where(eq(team.key, String(form.get("key"))));
   revalidatePath("/settings");

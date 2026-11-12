@@ -1,6 +1,7 @@
 import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { competitor, item, judgment, team } from "@/db/schema";
+import { currentViewer } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,10 @@ const LEVEL_TEXT: Record<string, string> = {
 };
 
 export default async function Feed({ searchParams }: { searchParams: Promise<{ team?: string; all?: string }> }) {
-  const { team: teamKey, all } = await searchParams;
+  const { team: picked, all } = await searchParams;
+  // An owner starts on their own team's view; "all" in the team filter shows every team.
+  const viewer = await currentViewer();
+  const teamKey = picked === "all" ? undefined : picked ?? viewer.team ?? undefined;
   const d = db();
   const teams = await d.select().from(team).orderBy(team.id);
   const statuses = all ? ["judged", "cosmetic", "held", "failed"] : ["judged"];
@@ -44,11 +48,11 @@ export default async function Feed({ searchParams }: { searchParams: Promise<{ t
         everything is listed here so you can check what was and wasn&apos;t sent, and why.
       </p>
       <div className="tabs" style={{ marginBottom: 16 }}>
-        <a href="/" className={!teamKey ? "on" : ""}>All teams</a>
+        <a href="/?team=all" className={!teamKey ? "on" : ""}>All teams</a>
         {teams.map((t) => (
           <a key={t.key} href={`/?team=${t.key}`} className={teamKey === t.key ? "on" : ""}>{t.name}</a>
         ))}
-        <a href={all ? (teamKey ? `/?team=${teamKey}` : "/") : `/?all=1${teamKey ? `&team=${teamKey}` : ""}`} style={{ float: "right" }}>
+        <a href={all ? `/?team=${teamKey ?? "all"}` : `/?all=1&team=${teamKey ?? "all"}`} style={{ float: "right" }}>
           {all ? "Hide filtered-out changes" : "Show filtered-out changes too"}
         </a>
       </div>
