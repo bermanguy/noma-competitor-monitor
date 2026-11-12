@@ -25,6 +25,14 @@ There is one AI in the loop. A second opinion comes from an independent review p
 - **Guy owns the business meaning in prompts**: team definitions and lenses, topic descriptions, and the definition of each relevance level. These live in their own files, separate from the rest of the prompt. Claude owns the scaffolding around them (output format, evidence rules, injection defences), and every change to it is scored against the golden set before merge.
 - Every owner decision comes as one card: the **recommendation**, **why**, **what happens if we do nothing**, and the **impact on the demo**. Claude keeps working on the recommendation until Guy answers.
 
+## Where each kind of change is written down
+
+- **Decision log** (`docs/decisions/`): a choice with a real alternative that someone will question later, or any choice Guy made on a decision card. One file each: context, decision, why, consequences.
+- **Scope change log** (`docs/scope.md`): anything that moves a feature in or out of the MVP.
+- **Architecture** (`docs/architecture.md`): how the system works now. Updated in the same PR as the code.
+- **PR description only**: settings, defaults and fixes (a schedule hour, a threshold, a bug). They are visible in the code and the PR history, and are easy to change.
+- When a setting is part of a logged decision, it gets one line in that decision instead of its own file.
+
 ## Definition of done for any change
 
 1. It moves a step in [the demo script](../demo-script.md) or a golden example forward. If it doesn't, it waits.
