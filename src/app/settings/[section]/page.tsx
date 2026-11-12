@@ -127,7 +127,20 @@ export default async function Settings({ params, searchParams }: { params: Promi
               <tr key={c.id} style={{ opacity: c.active ? 1 : 0.5 }}>
                 <td><strong>{c.name}</strong><div className="muted">{c.domain}</div></td>
                 <td className="muted">{mine.map((s) => s.label + (s.pageType === "pricing" ? " (pricing)" : "")).join(", ") || "nothing found yet"}</td>
-                <td><span className={`chip h-${worst}`}>{c.active ? HEALTH_TEXT[worst] : "Paused"}</span></td>
+                <td>
+                  <span className={`chip h-${worst}`}>{c.active ? HEALTH_TEXT[worst] : "Paused"}</span>
+                  {c.active && (worst === "failing" || worst === "quiet") && (() => {
+                    const bad = mine.filter((s) => sourceHealth(s).health === worst).map((s) => s.label).join(", ");
+                    return (
+                      <div className="muted" style={{ marginTop: 4 }}>
+                        {worst === "failing" ? `${bad}: we can't read it right now.` : `${bad}: no new posts for a while.`}{" "}
+                        {viewer.role === "builder"
+                          ? <a href="/ops/sources">Fix in Builder › Sources</a>
+                          : "The Builder was alerted in Slack. Nothing for you to do."}
+                      </div>
+                    );
+                  })()}
+                </td>
                 <td>
                   <form action={setCompetitorActive}>
                     <input type="hidden" name="id" value={c.id} />
