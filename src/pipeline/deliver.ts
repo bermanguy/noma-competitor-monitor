@@ -3,7 +3,7 @@ import { config } from "../config";
 import type { DB } from "../db/client";
 import { competitor, delivery, item, judgment, team, type DeliveryKind } from "../db/schema";
 import { plan } from "./route";
-import { alertMessage, digestMessage, postToSlack, type SlackItem } from "./slack";
+import { alertMessage, digestMessages, postToSlack, type SlackItem } from "./slack";
 
 /** Local date and hour in the business time zone. */
 export function localNow(d = new Date()) {
@@ -98,9 +98,14 @@ export async function deliver(db: DB, now = new Date()) {
     const digestIds = p.digest.get(t.key) ?? [];
     if (hour >= config.digestHourLocal && digestIds.length > 0) {
       const list = digestIds.map((id) => items.get(id)).filter((x): x is SlackItem => !!x);
-      const r = await sendOnce(db, `digest:${t.key}:${date}`, { kind: "digest", teamKey: t.key, judgmentIds: digestIds }, t.slackWebhookEnv, digestMessage(t.name, list));
-      if (r === "sent") stats.digests++;
-      if (r === "failed") stats.failed++;
+      const parts = digestMessages(t.name, list);
+      for (const [n, part] of parts.entries()) {
+        // The first part keeps the original key, so a digest already sent today is never repeated.
+        const key = n === 0 ? `digest:${t.key}:${date}` : `digest:${t.key}:${date}:${n + 1}`;
+        const r = await sendOnce(db, key, { kind: "digest", teamKey: t.key, judgmentIds: part.judgmentIds }, t.slackWebhookEnv, part.payload);
+        if (r === "sent" && n === 0) stats.digests++;
+        if (r === "failed") stats.failed++;
+      }
     }
   }
   return stats;

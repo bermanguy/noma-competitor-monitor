@@ -31,10 +31,13 @@ export function feedbackUrl(judgmentId: number, useful: boolean): string {
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-function itemBlocks(i: SlackItem) {
+/** Alerts show up to three quotes. A digest entry is compact: one quote, with the feedback links beside it. */
+function itemBlocks(i: SlackItem, compact = false) {
   const label = i.kind === "page_change" ? "Page change" : "New post";
   const date = i.publishedAt ? ` · published ${i.publishedAt.toISOString().slice(0, 10)}` : "";
   const canary = (i.isCanary ? " · TEST PAGE" : "") + (i.isBackfill ? " · published before monitoring started" : "");
+  const quotes = (compact ? i.evidence.slice(0, 1) : i.evidence).map((q) => `> “${esc(q)}”`).join("\n").slice(0, 2500);
+  const votes = `<${feedbackUrl(i.judgmentId, true)}|👍 Useful>   ·   <${feedbackUrl(i.judgmentId, false)}|👎 Not useful>`;
   return [
     {
       type: "section",
@@ -46,15 +49,12 @@ function itemBlocks(i: SlackItem) {
     ...(i.related
       ? [{ type: "context", elements: [{ type: "mrkdwn", text: `↪ Follow-up to <${i.related.url}|${esc(i.related.title)}>${i.storyNote ? `. New: ${esc(i.storyNote)}` : ""}` }] }]
       : []),
-    ...(i.evidence.length
-      ? [{ type: "context", elements: [{ type: "mrkdwn", text: i.evidence.map((q) => `> “${esc(q)}”`).join("\n").slice(0, 2900) }] }]
-      : []),
-    {
-      type: "context",
-      elements: [
-        { type: "mrkdwn", text: `<${feedbackUrl(i.judgmentId, true)}|👍 Useful>   ·   <${feedbackUrl(i.judgmentId, false)}|👎 Not useful>` },
-      ],
-    },
+    ...(compact
+      ? [{ type: "context", elements: [{ type: "mrkdwn", text: quotes ? `${quotes}\n${votes}` : votes }] }]
+      : [
+          ...(quotes ? [{ type: "context", elements: [{ type: "mrkdwn", text: quotes }] }] : []),
+          { type: "context", elements: [{ type: "mrkdwn", text: votes }] },
+        ]),
   ];
 }
 
@@ -86,22 +86,41 @@ export function groupStories(items: SlackItem[]): SlackItem[][] {
 function storyBlocks(group: SlackItem[]) {
   const [lead, ...rest] = group as [SlackItem, ...SlackItem[]];
   // The original sorts first, so a lead that is itself a follow-up keeps its "follow-up to" line.
-  const leadBlocks = itemBlocks(lead);
+  const leadBlocks = itemBlocks(lead, true);
   if (!rest.length) return leadBlocks;
   const also = rest.map((r) => `↪ Same story: <${r.url}|${esc(r.title)}>${r.storyNote ? ` · New: ${esc(r.storyNote)}` : " · nothing new"}`).join("\n");
   return [...leadBlocks, { type: "context", elements: [{ type: "mrkdwn", text: also.slice(0, 2900) }] }];
 }
 
-export function digestMessage(teamName: string, items: SlackItem[]) {
+/** Slack refuses a message over 50 blocks, so a long digest is split into parts. Nothing is ever cut. */
+export const MAX_BLOCKS = 48;
+
+export interface DigestPart { payload: { text: string; blocks: unknown[] }; judgmentIds: number[] }
+
+export function digestMessages(teamName: string, items: SlackItem[]): DigestPart[] {
   const stories = groupStories(items);
   const count = stories.length === items.length ? `${items.length}` : `${stories.length} ${stories.length === 1 ? "story" : "stories"}, ${items.length} posts`;
-  return {
-    text: `${teamName} digest: ${count}`,
-    blocks: [
-      { type: "header", text: { type: "plain_text", text: `${teamName} · competitor digest (${count})` } },
-      ...stories.flatMap((g) => [{ type: "divider" }, ...storyBlocks(g)]),
-    ].slice(0, 50),
-  };
+  const chunks: SlackItem[][][] = [[]];
+  let used = 1; // the header
+  for (const g of stories) {
+    const size = storyBlocks(g).length + 1; // plus its divider
+    if (used + size > MAX_BLOCKS && chunks[chunks.length - 1]!.length) { chunks.push([]); used = 1; }
+    chunks[chunks.length - 1]!.push(g);
+    used += size;
+  }
+  return chunks.map((chunk, n) => {
+    const part = chunks.length > 1 ? ` · part ${n + 1} of ${chunks.length}` : "";
+    return {
+      payload: {
+        text: `${teamName} digest: ${count}${part}`,
+        blocks: [
+          { type: "header", text: { type: "plain_text", text: `${teamName} · competitor digest (${count})${part}` } },
+          ...chunk.flatMap((g) => [{ type: "divider" }, ...storyBlocks(g)]),
+        ],
+      },
+      judgmentIds: chunk.flat().map((i) => i.judgmentId),
+    };
+  });
 }
 
 export async function postToSlack(webhookEnv: string, payload: unknown): Promise<void> {
