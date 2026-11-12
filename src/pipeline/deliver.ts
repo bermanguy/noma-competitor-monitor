@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray } from "drizzle-orm";
 import { config } from "../config";
 import type { DB } from "../db/client";
-import { competitor, delivery, item, judgment, team, type DeliveryKind } from "../db/schema";
+import { competitor, delivery, item, judgment, team, topic, type DeliveryKind } from "../db/schema";
 import { plan } from "./route";
 import { alertMessage, digestMessages, postToSlack, type SlackItem } from "./slack";
 
@@ -57,7 +57,7 @@ async function slackItems(db: DB, ids: number[]): Promise<Map<number, SlackItem>
       {
         judgmentId: j.id, competitor: c.name, title: i.title ?? i.url, url: i.url, kind: i.kind, level: j.level,
         why: j.why, evidence: j.evidence, publishedAt: i.publishedAt, isCanary: i.isCanary, isBackfill: i.isBackfill,
-        itemId: i.id, related: i.relatedItemId != null ? related.get(i.relatedItemId) ?? null : null, storyNote: i.storyNote,
+        itemId: i.id, related: i.relatedItemId != null ? related.get(i.relatedItemId) ?? null : null, storyNote: i.storyNote, topics: j.topics,
       },
     ]),
   );
@@ -67,6 +67,7 @@ export async function deliver(db: DB, now = new Date()) {
   const { date, hour } = localNow(now);
   const since = new Date(now.getTime() - 7 * 864e5);
   const teams = await db.select().from(team);
+  const topicOrder = (await db.select({ name: topic.name }).from(topic).where(eq(topic.active, true)).orderBy(topic.id)).map((t) => t.name);
   const candidates = await db
     .select({ judgmentId: judgment.id, teamKey: judgment.teamKey, level: judgment.level, evidenceOk: judgment.evidenceOk, createdAt: judgment.createdAt, isBackfill: item.isBackfill })
     .from(judgment)
@@ -98,7 +99,7 @@ export async function deliver(db: DB, now = new Date()) {
     const digestIds = p.digest.get(t.key) ?? [];
     if (hour >= config.digestHourLocal && digestIds.length > 0) {
       const list = digestIds.map((id) => items.get(id)).filter((x): x is SlackItem => !!x);
-      const parts = digestMessages(t.name, list);
+      const parts = digestMessages(t.name, list, topicOrder);
       for (const [n, part] of parts.entries()) {
         // The first part keeps the original key, so a digest already sent today is never repeated.
         const key = n === 0 ? `digest:${t.key}:${date}` : `digest:${t.key}:${date}:${n + 1}`;
