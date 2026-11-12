@@ -142,11 +142,14 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
                 <tbody>
                   {exam.last.scores.map((s) => {
                     const b = exam.baseline?.scores.find((x) => x.team === s.team);
-                    return <tr key={s.team}><td>{s.team}</td><td>{pct(s.precision)}{b ? <span className="muted"> (baseline {pct(b.precision)})</span> : null}</td><td>{pct(s.recall)}</td><td>{s.exact}/{s.graded}</td><td>{s.severe.length}</td></tr>;
+                    return <tr key={s.team}><td>{s.team}</td><td>{pct(s.precision)}{b ? <span className="muted"> (baseline {pct(b.precision)})</span> : null}</td><td>{pct(s.recall)}{b ? <span className="muted"> (baseline {pct(b.recall)})</span> : null}</td><td>{s.exact}/{s.graded}</td><td>{s.severe.length}</td></tr>;
                   })}
                 </tbody>
               </table>
               <div className="muted">{exam.last.graded} items · {exam.last.promptVersion} · {exam.last.model} · {exam.last.when.slice(0, 16).replace("T", " ")} UTC · ${exam.last.costUsd.toFixed(2)}{exam.last.failed.length ? ` · ${exam.last.failed.length} failed` : ""}{exam.last.stories?.length ? ` · same-story links ${exam.last.stories.filter((x) => x.got === x.expected).length}/${exam.last.stories.length} correct` : ""}</div>
+              <div className="muted">{exam.baseline
+                ? <>Baseline: the exam of {exam.baseline.when.slice(0, 16).replace("T", " ")} UTC ({exam.baseline.promptVersion}). {exam.baseline.when === exam.last.when ? "The result above is the baseline." : "The result above is compared with it."}</>
+                : "No baseline saved yet. Save one to compare later exams with it."}</div>
               {exam.regressions.length > 0 && <div className="notice" style={{ borderColor: "#f3c1c1", background: "#fff3f3" }}>Worse than the baseline: {exam.regressions.join("; ")}</div>}
               <details><summary className="muted">Where the judge disagreed with the answer key ({exam.last.outcomes.filter((o) => o.got !== o.expected).length})</summary>
                 <table><tbody>{exam.last.outcomes.filter((o) => o.got !== o.expected).map((o) => <tr key={o.id + o.team}><td>{o.id}</td><td>{o.team}</td><td>expected {o.expected}</td><td>got {o.got}{o.evidenceOk ? "" : " (no evidence)"}</td><td className="muted">{o.why ?? ""}</td></tr>)}</tbody></table>
