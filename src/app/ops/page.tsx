@@ -146,7 +146,7 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
                   })}
                 </tbody>
               </table>
-              <div className="muted">{exam.last.graded} items · {exam.last.promptVersion} · {exam.last.model} · {exam.last.when.slice(0, 16).replace("T", " ")} UTC · ${exam.last.costUsd.toFixed(2)}{exam.last.failed.length ? ` · ${exam.last.failed.length} failed` : ""}</div>
+              <div className="muted">{exam.last.graded} items · {exam.last.promptVersion} · {exam.last.model} · {exam.last.when.slice(0, 16).replace("T", " ")} UTC · ${exam.last.costUsd.toFixed(2)}{exam.last.failed.length ? ` · ${exam.last.failed.length} failed` : ""}{exam.last.stories?.length ? ` · same-story links ${exam.last.stories.filter((x) => x.got === x.expected).length}/${exam.last.stories.length} correct` : ""}</div>
               {exam.regressions.length > 0 && <div className="notice" style={{ borderColor: "#f3c1c1", background: "#fff3f3" }}>Worse than the baseline: {exam.regressions.join("; ")}</div>}
               <details><summary className="muted">Where the judge disagreed with the answer key ({exam.last.outcomes.filter((o) => o.got !== o.expected).length})</summary>
                 <table><tbody>{exam.last.outcomes.filter((o) => o.got !== o.expected).map((o) => <tr key={o.id + o.team}><td>{o.id}</td><td>{o.team}</td><td>expected {o.expected}</td><td>got {o.got}{o.evidenceOk ? "" : " (no evidence)"}</td><td className="muted">{o.why ?? ""}</td></tr>)}</tbody></table>

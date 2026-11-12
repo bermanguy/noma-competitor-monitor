@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { config } from "../config";
 import type { DB } from "../db/client";
-import { GATE_SYSTEM, JUDGE_SYSTEM, teamsBlock } from "../prompts/scaffold";
+import { GATE_SYSTEM, JUDGE_SYSTEM, QUOTE_SYSTEM, teamsBlock } from "../prompts/scaffold";
 import { structuredCall } from "./llm";
 import type { PageType } from "../db/schema";
 
@@ -100,4 +100,24 @@ export async function judgeItem(db: DB, runId: number | undefined, i: JudgeInput
   // Only an id that was actually offered counts as the same story.
   const known = r.sameStoryAs != null && (i.earlier ?? []).some((e) => e.id === r.sameStoryAs);
   return { ...r, sameStoryAs: known ? r.sameStoryAs : null, whatsNew: known ? r.whatsNew : null };
+}
+
+export const Requote = z.object({
+  quotes: z.array(z.object({ team: z.string(), evidence: z.array(z.string()) })),
+});
+
+/** Second chance for quotes: asks only for exact sentences that support a decision already made. */
+export async function requote(
+  db: DB, runId: number | undefined,
+  args: { source: string; asks: { team: string; level: string; why: string }[] },
+  model = config.judgeModel,
+): Promise<z.infer<typeof Requote>> {
+  const user = [
+    `<source>\n${args.source.slice(0, 40000)}\n</source>`,
+    `For each decision below, the quotes you gave earlier were not found in <source>. Copy 1 to 3 phrases from <source> that support the reason, character for character, each at least 12 characters. Do not paraphrase, shorten or join sentences. If nothing in <source> supports it, return an empty list for that team.`,
+    args.asks.map((a) => `<decision team="${a.team}" level="${a.level}">\n${a.why}\n</decision>`).join("\n"),
+  ].join("\n\n");
+  return structuredCall({
+    db, runId, purpose: "requote", model, system: QUOTE_SYSTEM, user, schema: Requote, maxTokens: 1500,
+  });
 }

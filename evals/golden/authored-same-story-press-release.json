@@ -13,10 +13,10 @@
   "expected": {
     "marketing": "log",
     "product": "log",
-    "rnd": "log"
+    "rnd": "digest"
   },
-  "labelledBy": "draft",
-  "note": "The press release for research the Labs post already reported, and every team already got the Labs post. Nothing new, so nothing is sent again.",
+  "labelledBy": "owner",
+  "note": "Same story as the Labs post (101), which every team already got. The release adds one thing: AWS made IMDSv2 the default for AgentCore and cut the default role's permissions. That remediation is new and useful to R&D, so R&D gets a digest that links to the Labs post and says only what is new. Nothing new for Marketing or Product. Owner decision, 12 Nov.",
   "tags": [
     "same-story",
     "duplicate"
@@ -33,5 +33,6 @@
         "rnd": "alert"
       }
     }
-  ]
+  ],
+  "expectedSameStoryAs": 101
 }

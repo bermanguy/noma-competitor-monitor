@@ -70,6 +70,7 @@ export const pct = (x: number | null) => (x === null ? "n/a" : `${Math.round(x *
 export function formatReport(args: {
   promptVersion: string; model: string; when: string; scores: TeamScore[]; outcomes: Outcome[];
   regressions: string[]; failed: string[]; unlabelled: number; costUsd: number;
+  stories?: { id: string; expected: number | null; got: number | null; whatsNew: string | null }[];
 }): string {
   const { scores, outcomes } = args;
   const misses = outcomes.filter((o) => o.got !== o.expected);
@@ -86,6 +87,9 @@ export function formatReport(args: {
       ? `**Regression against the baseline:**\n${args.regressions.map((r) => `- ${r}`).join("\n")}`
       : "No regression against the baseline.",
     args.failed.length ? `\n**Failed to judge:** ${args.failed.join(", ")}` : "",
+    args.stories?.length
+      ? `\n**Same-story links:** ${args.stories.filter((x) => x.got === x.expected).length}/${args.stories.length} correct\n${args.stories.map((x) => `- ${x.id}: expected ${x.expected ?? "no link"}, got ${x.got ?? "no link"}${x.whatsNew ? `. New: ${x.whatsNew}` : ""}`).join("\n")}`
+      : "",
     "",
     "## Disagreements",
     "",

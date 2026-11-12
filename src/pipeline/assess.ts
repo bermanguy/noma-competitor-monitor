@@ -6,6 +6,7 @@ import { PROMPT_VERSION } from "../prompts/scaffold";
 import { judgeItem, type EarlierItem, type JudgeResult } from "./judge";
 import { BudgetExceeded, Refused } from "./llm";
 import { quotesInSource } from "./text";
+import { settleEvidence } from "./evidence";
 import { getOwnerTexts } from "../lib/owner-text";
 
 /** Recent rated items, per team, shown to the model as examples of what this team found useful or not. */
@@ -82,13 +83,14 @@ export async function assessPending(db: DB, runId: number) {
   let held = 0;
   for (const { i, c, pageType } of pending) {
     try {
-      const result = await judgeItem(db, runId, {
+      const firstPass = await judgeItem(db, runId, {
         competitor: c.name, kind: i.kind, pageType, url: i.url, title: i.title, publishedAt: i.publishedAt,
         text: i.text, diff: i.diff, teams: ctx.teams, topics: ctx.topics, examples: ctx.examples,
         company: ctx.owner.company, levels: ctx.owner.levels, pageGuidance: pageType === "pricing" ? ctx.owner["page.pricing"] : undefined,
         earlier: await earlierItems(db, c.id, i.id),
       });
       const sourceText = i.kind === "page_change" ? `${i.text}\n${i.beforeText ?? ""}` : i.text;
+      const result = await settleEvidence(db, runId, firstPass, sourceText);
       await saveJudgments(db, i.id, sourceText, result, ctx.teams.map((t) => t.key), config.judgeModel);
       await db.update(item).set({ status: "judged", statusDetail: result.summary, relatedItemId: result.sameStoryAs, storyNote: result.whatsNew }).where(eq(item.id, i.id));
       judged++;

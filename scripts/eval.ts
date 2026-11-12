@@ -38,7 +38,7 @@ const baselinePath = join(process.cwd(), "evals/baseline.json");
 const baseline: TeamScore[] | null = existsSync(baselinePath) ? JSON.parse(readFileSync(baselinePath, "utf8")).scores : null;
 const regs = only ? [] : regressions(r.scores, baseline);
 const when = r.when.slice(0, 16).replace("T", " ");
-const report = formatReport({ promptVersion: r.promptVersion, model: r.model, when, scores: r.scores, outcomes: r.outcomes, regressions: regs, failed: r.failed, unlabelled: r.unlabelled, costUsd: r.costUsd });
+const report = formatReport({ promptVersion: r.promptVersion, model: r.model, when, scores: r.scores, outcomes: r.outcomes, regressions: regs, failed: r.failed, unlabelled: r.unlabelled, costUsd: r.costUsd, stories: r.stories });
 
 mkdirSync(join(process.cwd(), "evals/reports"), { recursive: true });
 const stem = `${r.when.slice(0, 16).replace(/[:T]/g, "-")}-${r.promptVersion}-${r.model}`;
