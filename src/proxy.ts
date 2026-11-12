@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Two surfaces, two passwords. The owner surface (feed, settings) and the operator surface (/ops)
- * are separated at the edge. The canary page, feedback links and the health check are public.
+ * Two surfaces, two passwords. The owner password opens the owner surface (feed, settings); the
+ * operator password opens everything. Both use one sign-in realm, so whoever signs in once can move
+ * between the pages without being asked again. The canary page, feedback links and the health check are public.
  */
 export function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
@@ -15,7 +16,7 @@ export function proxy(req: NextRequest) {
   if (pass && allowed.includes(pass)) return NextResponse.next();
   return new NextResponse("Sign in required", {
     status: 401,
-    headers: { "WWW-Authenticate": `Basic realm="${ops ? "Operator" : "Competitor monitor"}"` },
+    headers: { "WWW-Authenticate": 'Basic realm="Competitor monitor"' },
   });
 }
 
