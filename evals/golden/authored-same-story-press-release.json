@@ -34,5 +34,11 @@
       }
     }
   ],
-  "expectedSameStoryAs": 101
+  "expectedSameStoryAs": 101,
+  "expectedTopics": [
+    "Agent identity and access control",
+    "SaaS and cloud agent platforms",
+    "Agent runtime security (AI-DR)",
+    "AI agent runtime security"
+  ]
 }

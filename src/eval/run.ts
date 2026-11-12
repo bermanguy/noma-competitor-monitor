@@ -10,7 +10,7 @@ import { quotesInSource } from "../pipeline/text";
 import { PROMPT_VERSION } from "../prompts/scaffold";
 import { type GoldenItem, type Level } from "./golden";
 import { examItems } from "./owner-golden";
-import { regressions, scoreTeams, type Outcome, type TeamScore } from "./score";
+import { regressions, scoreTeams, topicCheck, type Outcome, type TeamScore, type TopicCheck } from "./score";
 
 export interface EvalResult {
   when: string;
@@ -24,6 +24,8 @@ export interface EvalResult {
   costUsd: number;
   /** Items whose answer key names the earlier story they repeat: did the judge link them? */
   stories?: StoryCheck[];
+  /** Items whose answer key lists fitting topics: did the judge tag one of them? */
+  topics?: TopicCheck[];
 }
 
 export interface StoryCheck { id: string; expected: number | null; got: number | null; whatsNew: string | null }
@@ -44,6 +46,7 @@ export async function runEval(db: DB, opts: { model?: string; only?: string[]; i
   const outcomes: Outcome[] = [];
   const failed: string[] = [];
   const stories: StoryCheck[] = [];
+  const topicChecks: TopicCheck[] = [];
   const queue = [...labelled];
   const worker = async () => {
     for (let g = queue.shift(); g; g = queue.shift()) {
@@ -56,13 +59,14 @@ export async function runEval(db: DB, opts: { model?: string; only?: string[]; i
         }, model);
         const sourceText = g.kind === "page_change" ? `${g.text}\n${g.beforeText ?? ""}` : g.text;
         const r = await settleEvidence(db, undefined, first, sourceText, model);
+        if (g.expectedTopics?.length) topicChecks.push(topicCheck(g.id, g.expectedTopics, r.judgments.flatMap((x) => x.topics)));
         if (g.expectedSameStoryAs !== undefined) stories.push({ id: g.id, expected: g.expectedSameStoryAs, got: r.sameStoryAs, whatsNew: r.whatsNew });
         for (const team of teamKeys) {
           const expected = g.expected![team];
           if (!expected) continue;
           const j = r.judgments.find((x) => x.team === team);
           const got: Level = j?.level ?? "none";
-          outcomes.push({ id: g.id, team, expected, got, evidenceOk: got === "none" || got === "log" || quotesInSource(j?.evidence ?? [], sourceText), why: j?.why });
+          outcomes.push({ id: g.id, team, expected, got, evidenceOk: got === "none" || got === "log" || quotesInSource(j?.evidence ?? [], sourceText), why: j?.why, topics: j?.topics });
         }
       } catch (e) {
         failed.push(`${g.id}: ${(e as Error).message.slice(0, 120)}`);
@@ -73,7 +77,7 @@ export async function runEval(db: DB, opts: { model?: string; only?: string[]; i
   return {
     when: new Date().toISOString(), promptVersion: PROMPT_VERSION, model,
     graded: labelled.length - failed.length, unlabelled: items.length - labelled.length,
-    scores: scoreTeams(outcomes), outcomes, failed, costUsd: (await spend(db)).month - before, stories,
+    scores: scoreTeams(outcomes), outcomes, failed, costUsd: (await spend(db)).month - before, stories, topics: topicChecks,
   };
 }
 

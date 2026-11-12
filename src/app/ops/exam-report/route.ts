@@ -16,7 +16,7 @@ export async function GET() {
   const missed = [...new Set(last.outcomes.filter((o) => o.got !== o.expected).map((o) => o.id))];
   const report = formatReport({
     promptVersion: last.promptVersion, model: last.model, when: last.when.slice(0, 16).replace("T", " "), scores: last.scores,
-    outcomes: last.outcomes, regressions, failed: last.failed, unlabelled: last.unlabelled, costUsd: last.costUsd, stories: last.stories,
+    outcomes: last.outcomes, regressions, failed: last.failed, unlabelled: last.unlabelled, costUsd: last.costUsd, stories: last.stories, topics: last.topics,
     ownerItems: [...golden.values()].filter((g) => g.tags.includes("from-feedback")).map((g) => g.id),
   });
   const items = missed.map((id) => {

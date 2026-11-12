@@ -5,6 +5,33 @@ export interface Outcome {
   id: string; team: string; expected: Level; got: Level; evidenceOk: boolean;
   /** The judge's reason for this team, so a disagreement can be traced to its cause. */
   why?: string;
+  /** Topics the judge tagged for this team; they decide the item's section in the digest. */
+  topics?: string[];
+}
+
+/** Did the judge tag the item with a topic that fits it? */
+export interface TopicCheck { id: string; expected: string[]; got: string[]; hit: boolean }
+
+export function topicCheck(id: string, expected: string[], got: string[]): TopicCheck {
+  const want = new Set(expected.map((t) => t.toLowerCase()));
+  const uniq = [...new Set(got)];
+  return { id, expected, got: uniq, hit: uniq.some((t) => want.has(t.toLowerCase())) };
+}
+
+/** What each team's digest would have held in this exam: sent items grouped by their first topic, as the digest groups them. */
+export function digestPreview(outcomes: Outcome[]): string {
+  const teams = [...new Set(outcomes.map((o) => o.team))];
+  return teams.map((team) => {
+    const sent = outcomes.filter((o) => o.team === team && isSent(o.got));
+    if (!sent.length) return `**${team}:** nothing would be sent.`;
+    const groups = new Map<string, Outcome[]>();
+    for (const o of sent) { const k = o.topics?.[0] ?? "Other"; groups.set(k, [...(groups.get(k) ?? []), o]); }
+    const order = [...groups.entries()].sort((a, b) => Number(a[0] === "Other") - Number(b[0] === "Other") || b[1].length - a[1].length);
+    return [`**${team}** (${sent.length} sent: ${sent.filter((o) => o.got === "alert").length} alerts)`, ...order.flatMap(([topic, os]) => [
+      `- _${topic}_ (${os.length})`,
+      ...os.map((o) => `  - ${o.got === "alert" ? "🔔 " : ""}${o.id}${o.got === o.expected ? "" : ` (answer key: ${o.expected})`}`),
+    ])].join("\n");
+  }).join("\n\n");
 }
 
 /** "Sent" means it reaches the team: alert now, or digest in the daily digest. */
@@ -73,6 +100,7 @@ export function formatReport(args: {
   stories?: { id: string; expected: number | null; got: number | null; whatsNew: string | null }[];
   /** Exam items the owner added from team votes, listed with how the judge did on each. */
   ownerItems?: string[];
+  topics?: TopicCheck[];
 }): string {
   const { scores, outcomes } = args;
   const misses = outcomes.filter((o) => o.got !== o.expected);
@@ -92,7 +120,16 @@ export function formatReport(args: {
     args.stories?.length
       ? `\n**Same-story links:** ${args.stories.filter((x) => x.got === x.expected).length}/${args.stories.length} correct\n${args.stories.map((x) => `- ${x.id}: expected ${x.expected ?? "no link"}, got ${x.got ?? "no link"}${x.whatsNew ? `. New: ${x.whatsNew}` : ""}`).join("\n")}`
       : "",
+    args.topics?.length
+      ? `\n**Topic tags:** ${args.topics.filter((t) => t.hit).length}/${args.topics.length} items tagged with a fitting topic${args.topics.some((t) => !t.hit) ? `\n${args.topics.filter((t) => !t.hit).map((t) => `- ${t.id}: expected one of ${t.expected.join(" / ")}; got ${t.got.join(", ") || "no topic"}`).join("\n")}` : ""}`
+      : "",
     ownerItemsSection(outcomes, args.ownerItems ?? []),
+    "",
+    "## How the digests would look",
+    "",
+    "What each team would have received in this exam, grouped by topic as the digest groups it. A look, not a score.",
+    "",
+    digestPreview(outcomes),
     "",
     "## Disagreements",
     "",

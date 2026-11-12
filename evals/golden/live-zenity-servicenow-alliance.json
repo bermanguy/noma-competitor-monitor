@@ -21,5 +21,9 @@
     "partner",
     "integration",
     "backfill-2026-11-12"
+  ],
+  "expectedTopics": [
+    "SaaS and cloud agent platforms",
+    "Funding, M&A, partners and analysts"
   ]
 }

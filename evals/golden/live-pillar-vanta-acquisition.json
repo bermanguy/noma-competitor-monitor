@@ -21,5 +21,8 @@
     "m-and-a",
     "multi-team",
     "backfill-2026-11-12"
+  ],
+  "expectedTopics": [
+    "Funding, M&A, partners and analysts"
   ]
 }

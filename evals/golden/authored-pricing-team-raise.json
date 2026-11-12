@@ -21,5 +21,9 @@
     "pricing",
     "page-change",
     "multi-team"
+  ],
+  "expectedTopics": [
+    "MCP and agent skills security",
+    "AI asset discovery and posture (AI-SPM)"
   ]
 }

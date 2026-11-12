@@ -21,5 +21,9 @@
     "capability",
     "multi-team",
     "backfill-2026-11-12"
+  ],
+  "expectedTopics": [
+    "Agent runtime security (AI-DR)",
+    "AI agent runtime security"
   ]
 }

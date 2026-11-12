@@ -20,6 +20,18 @@ describe("extractListingLinks", () => {
   });
 });
 
+describe("titles", () => {
+  it("takes a card link's heading, not its category, date and teaser run together", () => {
+    const html = `<a href="/blog/detection-results"><span>Blog</span><span>November 9, 2026</span><h3>Runtime Security for AI Agents: Detection Results</h3><p>AI agent runtime security, measured.</p></a>`;
+    expect(extractListingLinks(html, "https://straiker.ai/blog", "/blog")[0]?.title).toBe("Runtime Security for AI Agents: Detection Results");
+  });
+  it("prefers the page's share title for a post", () => {
+    const html = `<html><head><title>Blog | Straiker</title><meta property="og:title" content="Runtime Security for AI Agents: Detection Results"></head>
+      <body><article>${"<p>Straiker published detection results for AI agents at runtime, with latency.</p>".repeat(5)}</article></body></html>`;
+    expect(extractMain(html, "https://straiker.ai/blog/x").title).toBe("Runtime Security for AI Agents: Detection Results");
+  });
+});
+
 describe("extractMain", () => {
   it("keeps the article text and the stated publication date, drops navigation", () => {
     const html = `<html><head><title>Post</title><meta property="article:published_time" content="2026-11-10T09:00:00Z"></head>

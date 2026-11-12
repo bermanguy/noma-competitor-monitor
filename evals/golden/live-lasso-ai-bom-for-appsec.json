@@ -20,5 +20,10 @@
   "tags": [
     "capability",
     "backfill-2026-11-12"
+  ],
+  "expectedTopics": [
+    "AI asset discovery and posture (AI-SPM)",
+    "MCP and agent skills security",
+    "AI supply chain security"
   ]
 }

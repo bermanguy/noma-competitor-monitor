@@ -168,7 +168,7 @@ export default async function Ops({ params, searchParams }: { params: Promise<{ 
                   })}
                 </tbody>
               </table>
-              <div className="muted">{exam.last.graded} items · {exam.last.promptVersion} · {exam.last.model} · {exam.last.when.slice(0, 16).replace("T", " ")} UTC · ${exam.last.costUsd.toFixed(2)}{exam.last.failed.length ? ` · ${exam.last.failed.length} failed` : ""}{exam.last.stories?.length ? ` · same-story links ${exam.last.stories.filter((x) => x.got === x.expected).length}/${exam.last.stories.length} correct` : ""}</div>
+              <div className="muted">{exam.last.graded} items · {exam.last.promptVersion} · {exam.last.model} · {exam.last.when.slice(0, 16).replace("T", " ")} UTC · ${exam.last.costUsd.toFixed(2)}{exam.last.failed.length ? ` · ${exam.last.failed.length} failed` : ""}{exam.last.stories?.length ? ` · same-story links ${exam.last.stories.filter((x) => x.got === x.expected).length}/${exam.last.stories.length} correct` : ""}{exam.last.topics?.length ? ` · topic tags ${exam.last.topics.filter((x) => x.hit).length}/${exam.last.topics.length} fit` : ""}</div>
               <div className="muted">{exam.baseline
                 ? <>Baseline: the exam of {exam.baseline.when.slice(0, 16).replace("T", " ")} UTC ({exam.baseline.promptVersion}). {exam.baseline.when === exam.last.when ? "The result above is the baseline." : "The result above is compared with it."}</>
                 : "No baseline saved yet. Save one to compare later exams with it."}</div>

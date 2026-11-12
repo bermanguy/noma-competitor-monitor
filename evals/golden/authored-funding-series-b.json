@@ -21,5 +21,8 @@
     "funding",
     "post",
     "multi-team"
+  ],
+  "expectedTopics": [
+    "Funding, M&A, partners and analysts"
   ]
 }

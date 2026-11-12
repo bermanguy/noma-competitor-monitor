@@ -21,5 +21,8 @@
     "mcp",
     "technical",
     "post"
+  ],
+  "expectedTopics": [
+    "MCP and agent skills security"
   ]
 }
