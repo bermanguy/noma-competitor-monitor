@@ -52,4 +52,6 @@ There is one AI in the loop. A second opinion comes from an independent review p
 
 - Morning: Claude posts the plan for the day as demo-script steps.
 - Evening: Claude posts what is live, what the evals say, and the one or two decisions needed tomorrow.
-- Sunday afternoon is reserved for the design doc and the video.
+- Submission is Sunday 10:00 (Asia/Jerusalem); the presentation is Sunday 14:00.
+- Code freeze Saturday evening. The design doc is written Saturday night or Sunday morning, as a summary of `architecture.md`, `scope.md` and the decision records, which every PR keeps current.
+- Before submitting, a final check: every decision record and every section of `architecture.md` appears in the design doc, and every claim in it matches the code.
