@@ -7,7 +7,8 @@ vi.mock("../src/pipeline/llm", async (orig) => ({
   structuredCall: (...a: unknown[]) => modelReply(...a),
 }));
 const { judgeItem, buildJudgeUser } = await import("../src/pipeline/judge");
-const { groupStories, digestMessage } = await import("../src/pipeline/slack");
+const { groupStories, digestMessages, MAX_BLOCKS } = await import("../src/pipeline/slack");
+const digestMessage = (t: string, items: SlackItem[]) => digestMessages(t, items)[0]!.payload;
 
 const input = {
   competitor: "Acme", kind: "post" as const, url: "https://acme.test/p", title: "Press", publishedAt: null, text: "Acme disclosed research.",
@@ -37,5 +38,19 @@ describe("same story", () => {
     expect(JSON.stringify(msg.blocks)).toContain("Same story: <https://acme.test/11|t11> · New: Adds a quote.");
     // A follow-up whose original was sent earlier says so.
     expect(JSON.stringify(digestMessage("R&D", [it(1, 11, 10)]).blocks)).toContain("Follow-up to <https://acme.test/10|t10>");
+  });
+
+  it("splits a long digest into parts under Slack's block limit and keeps every item", () => {
+    const items: SlackItem[] = Array.from({ length: 40 }, (_, n) => ({
+      judgmentId: n + 1, itemId: n + 1, competitor: "Acme", title: `t${n}`, url: `https://acme.test/${n}`, kind: "post", level: "digest",
+      why: "w", evidence: ["one quote here", "a second quote"], publishedAt: null, isCanary: false,
+    }));
+    const parts = digestMessages("Product", items);
+    expect(parts.length).toBeGreaterThan(1);
+    for (const p of parts) expect(p.payload.blocks.length).toBeLessThanOrEqual(MAX_BLOCKS);
+    expect(parts.flatMap((p) => p.judgmentIds)).toEqual(items.map((i) => i.judgmentId));
+    expect(parts[1]!.payload.text).toBe(`Product digest: 40 · part 2 of ${parts.length}`);
+    // A digest entry shows one quote; alerts keep all of them.
+    expect(JSON.stringify(parts[0]!.payload)).not.toContain("a second quote");
   });
 });
