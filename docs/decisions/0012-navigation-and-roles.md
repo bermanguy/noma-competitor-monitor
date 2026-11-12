@@ -1,4 +1,4 @@
-# 0012. Navigation moves to a left rail, and every page is named by its menu item
+# 0012. Navigation moves to a left rail with menus by role, and every page is named by its menu item
 
 - Status: Proposed, waiting for the product owner's review of the PR
 - Date: 2026-11-12
