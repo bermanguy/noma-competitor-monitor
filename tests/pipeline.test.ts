@@ -21,6 +21,7 @@ vi.mock("../src/pipeline/judge", async (orig) => ({
   ...(await orig<typeof import("../src/pipeline/judge")>()),
   judgeItem: (...a: unknown[]) => judgeReply(...a),
   gateChange: (...a: unknown[]) => gateReply(...a),
+  requote: async () => ({ quotes: [] }),
 }));
 const pricingReply = vi.fn();
 vi.mock("../src/pipeline/pricing", async (orig) => ({

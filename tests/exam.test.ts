@@ -4,9 +4,11 @@ import { team } from "../src/db/schema";
 import type { GoldenItem } from "../src/eval/golden";
 
 const judgeReply = vi.fn();
+const requoteReply = vi.fn(async (..._a: unknown[]) => ({ quotes: [{ team: "rnd", evidence: ["still not in the text at all"] }] }));
 vi.mock("../src/pipeline/judge", async (orig) => ({
   ...(await orig<typeof import("../src/pipeline/judge")>()),
   judgeItem: (...a: unknown[]) => judgeReply(...a),
+  requote: (...a: unknown[]) => requoteReply(...a),
 }));
 const { runEval, examState, saveBaseline } = await import("../src/eval/run");
 
@@ -31,6 +33,15 @@ describe("exam", () => {
     expect(r.scores.find((s) => s.team === "rnd")).toMatchObject({ recall: 0, evidenceFailures: ["a"] });
     expect(r.outcomes.find((o) => o.team === "rnd")?.why).toBe("w");
     expect(judgeReply).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks that a repeated story is linked to the earlier item", async () => {
+    const db = await testDb();
+    await db.insert(team).values({ key: "rnd", name: "R&D", lens: "R&D", slackWebhookEnv: "X_rnd" });
+    judgeReply.mockResolvedValue({ summary: "s", sameStoryAs: null, whatsNew: null, judgments: [{ team: "rnd", level: "log", why: "w", evidence: [], topics: [] }] });
+    const item = { ...g("c", { rnd: "log" }), expectedSameStoryAs: 101 };
+    const r = await runEval(db, { items: [item, g("d", { rnd: "log" })] });
+    expect(r.stories).toEqual([{ id: "c", expected: 101, got: null, whatsNew: null }]);
   });
 
   it("compares the last exam with the saved baseline", async () => {

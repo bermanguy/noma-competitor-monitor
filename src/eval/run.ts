@@ -5,6 +5,7 @@ import { setting } from "../db/schema";
 import { loadContext } from "../pipeline/assess";
 import { judgeItem } from "../pipeline/judge";
 import { spend } from "../pipeline/llm";
+import { settleEvidence } from "../pipeline/evidence";
 import { quotesInSource } from "../pipeline/text";
 import { PROMPT_VERSION } from "../prompts/scaffold";
 import { loadGolden, type GoldenItem, type Level } from "./golden";
@@ -20,7 +21,11 @@ export interface EvalResult {
   outcomes: Outcome[];
   failed: string[];
   costUsd: number;
+  /** Items whose answer key names the earlier story they repeat: did the judge link them? */
+  stories?: StoryCheck[];
 }
+
+export interface StoryCheck { id: string; expected: number | null; got: number | null; whatsNew: string | null }
 
 /** Judges every labelled golden item with the prompt context found in this database, and grades it per team. */
 export async function runEval(db: DB, opts: { model?: string; only?: string[]; items?: GoldenItem[] } = {}): Promise<EvalResult> {
@@ -34,17 +39,20 @@ export async function runEval(db: DB, opts: { model?: string; only?: string[]; i
 
   const outcomes: Outcome[] = [];
   const failed: string[] = [];
+  const stories: StoryCheck[] = [];
   const queue = [...labelled];
   const worker = async () => {
     for (let g = queue.shift(); g; g = queue.shift()) {
       try {
-        const r = await judgeItem(db, undefined, {
+        const first = await judgeItem(db, undefined, {
           competitor: g.competitor, kind: g.kind, pageType: g.pageType, url: g.url, title: g.title,
           publishedAt: g.publishedAt ? new Date(g.publishedAt) : null, text: g.text, diff: g.diff,
           teams: ctx.teams, topics: ctx.topics, company: ctx.owner.company, levels: ctx.owner.levels,
           pageGuidance: g.pageType === "pricing" ? ctx.owner["page.pricing"] : undefined, earlier: g.earlier,
         }, model);
         const sourceText = g.kind === "page_change" ? `${g.text}\n${g.beforeText ?? ""}` : g.text;
+        const r = await settleEvidence(db, undefined, first, sourceText, model);
+        if (g.expectedSameStoryAs !== undefined) stories.push({ id: g.id, expected: g.expectedSameStoryAs, got: r.sameStoryAs, whatsNew: r.whatsNew });
         for (const team of teamKeys) {
           const expected = g.expected![team];
           if (!expected) continue;
@@ -61,7 +69,7 @@ export async function runEval(db: DB, opts: { model?: string; only?: string[]; i
   return {
     when: new Date().toISOString(), promptVersion: PROMPT_VERSION, model,
     graded: labelled.length - failed.length, unlabelled: items.length - labelled.length,
-    scores: scoreTeams(outcomes), outcomes, failed, costUsd: (await spend(db)).month - before,
+    scores: scoreTeams(outcomes), outcomes, failed, costUsd: (await spend(db)).month - before, stories,
   };
 }
 

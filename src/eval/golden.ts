@@ -33,6 +33,8 @@ export const GoldenItem = z.object({
   earlier: z.array(z.object({
     id: z.number().int(), title: z.string().nullable(), publishedAt: z.string().nullable(), summary: z.string(), levels: z.record(z.string(), z.string()),
   })).default([]),
+  /** When set, the judge must link this item to that id in <earlier> (same story). Graded apart from the levels. */
+  expectedSameStoryAs: z.number().int().nullable().optional(),
 });
 export type GoldenItem = z.infer<typeof GoldenItem>;
 

@@ -16,7 +16,7 @@ export async function GET() {
   const missed = [...new Set(last.outcomes.filter((o) => o.got !== o.expected).map((o) => o.id))];
   const report = formatReport({
     promptVersion: last.promptVersion, model: last.model, when: last.when.slice(0, 16).replace("T", " "), scores: last.scores,
-    outcomes: last.outcomes, regressions, failed: last.failed, unlabelled: last.unlabelled, costUsd: last.costUsd,
+    outcomes: last.outcomes, regressions, failed: last.failed, unlabelled: last.unlabelled, costUsd: last.costUsd, stories: last.stories,
   });
   const items = missed.map((id) => {
     const g = golden.get(id);
