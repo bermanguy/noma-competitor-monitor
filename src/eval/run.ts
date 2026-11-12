@@ -8,7 +8,8 @@ import { spend } from "../pipeline/llm";
 import { settleEvidence } from "../pipeline/evidence";
 import { quotesInSource } from "../pipeline/text";
 import { PROMPT_VERSION } from "../prompts/scaffold";
-import { loadGolden, type GoldenItem, type Level } from "./golden";
+import { type GoldenItem, type Level } from "./golden";
+import { examItems } from "./owner-golden";
 import { regressions, scoreTeams, type Outcome, type TeamScore } from "./score";
 
 export interface EvalResult {
@@ -27,10 +28,13 @@ export interface EvalResult {
 
 export interface StoryCheck { id: string; expected: number | null; got: number | null; whatsNew: string | null }
 
-/** Judges every labelled golden item with the prompt context found in this database, and grades it per team. */
+/**
+ * Judges every labelled golden item with the prompt context found in this database, and grades it per team.
+ * Without explicit items it runs the live exam: the golden files plus the items the owner added in the app.
+ */
 export async function runEval(db: DB, opts: { model?: string; only?: string[]; items?: GoldenItem[] } = {}): Promise<EvalResult> {
   const model = opts.model ?? config.judgeModel;
-  const all = opts.items ?? loadGolden();
+  const all = opts.items ?? (await examItems(db));
   const items = all.filter((g) => !opts.only || opts.only.includes(g.id));
   const labelled = items.filter((g) => g.expected);
   const ctx = await loadContext(db);

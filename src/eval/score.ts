@@ -71,6 +71,8 @@ export function formatReport(args: {
   promptVersion: string; model: string; when: string; scores: TeamScore[]; outcomes: Outcome[];
   regressions: string[]; failed: string[]; unlabelled: number; costUsd: number;
   stories?: { id: string; expected: number | null; got: number | null; whatsNew: string | null }[];
+  /** Exam items the owner added from team votes, listed with how the judge did on each. */
+  ownerItems?: string[];
 }): string {
   const { scores, outcomes } = args;
   const misses = outcomes.filter((o) => o.got !== o.expected);
@@ -90,6 +92,7 @@ export function formatReport(args: {
     args.stories?.length
       ? `\n**Same-story links:** ${args.stories.filter((x) => x.got === x.expected).length}/${args.stories.length} correct\n${args.stories.map((x) => `- ${x.id}: expected ${x.expected ?? "no link"}, got ${x.got ?? "no link"}${x.whatsNew ? `. New: ${x.whatsNew}` : ""}`).join("\n")}`
       : "",
+    ownerItemsSection(outcomes, args.ownerItems ?? []),
     "",
     "## Disagreements",
     "",
@@ -98,5 +101,23 @@ export function formatReport(args: {
          ...misses.map((o) => `| ${o.id} | ${o.team} | ${o.expected} | ${o.got}${o.evidenceOk ? "" : " (no evidence)"} | ${(o.why ?? "").replace(/\|/g, "/")} |`)].join("\n")
       : "None.",
     "",
+  ].join("\n");
+}
+
+/** One line per owner-added item: did the judge now give each team the owner's level? */
+export function ownerItemResults(outcomes: Outcome[], ids: string[]) {
+  return ids.map((id) => {
+    const os = outcomes.filter((o) => o.id === id);
+    return { id, graded: os.length > 0, agreed: os.length > 0 && os.every((o) => o.got === o.expected), outcomes: os };
+  });
+}
+
+function ownerItemsSection(outcomes: Outcome[], ids: string[]): string {
+  if (!ids.length) return "";
+  const rows = ownerItemResults(outcomes, ids);
+  return [
+    "",
+    `**Added by the owner from team votes:** ${rows.filter((r) => r.agreed).length}/${rows.length} now judged as the owner said`,
+    ...rows.map((r) => `- ${r.id}: ${!r.graded ? "not graded in this exam" : r.outcomes.map((o) => `${o.team} expected ${o.expected}, got ${o.got}`).join("; ")}`),
   ].join("\n");
 }

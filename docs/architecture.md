@@ -134,7 +134,7 @@ flowchart LR
 - **How it is graded:** "sent" means `alert` or `digest`. Per team: precision (of what we send, how much the team should get), recall (of what it should get, how much we send), exact level, severe misses (a missed alert, or an alert on something irrelevant), and evidence failures. A sent judgment without verbatim evidence counts as not sent, as in production (after the same one retry). Items that repeat an earlier story also name it (`expectedSameStoryAs`), and the report shows how many links the judge got right. `npm run eval -- --save-baseline` records the bar; later runs exit with an error when a team's precision drops.
 - **On every change** to prompts, lenses, levels or models, the operator runs the exam ("Run the exam" on `/ops`, on the server where the API key lives, against the live prompts) and compares it with the saved baseline. `npm run eval` does the same from a laptop.
 - **Who labels:** each area head owns their team's column of the answer key, because they know best what their team needs. In this build the product owner labels all three as a stand-in.
-- **After launch:** each Slack item carries a feedback link. A "not useful" vote asks why. Rated items are added to the prompt as recent per-team examples and can be promoted into the golden set by the operator.
+- **After launch:** each Slack item carries a feedback link. A "not useful" vote asks why. Rated items are added to the prompt as recent per-team examples. The owner sees every recent "not useful" vote under "To review" in Settings, picks the level each team should have got, and "Add to the exam" stores the item as an exam item (`golden_item` table, same shape as a file in `evals/golden/`) ([0011](decisions/0011-votes-become-exam-items.md)). The exam on `/ops` grades the golden files plus these items, and lists them as "Added by the owner from team votes" with the judge's answer next to the owner's. `npm run eval` from a laptop still grades the files only.
 - **When a score drops, find the cause before changing anything (error analysis).** Read each disagreement with the judge's reason, which `/ops` and the report show, and put it in one bucket:
 
   | Cause | Example | Fix | Owner |
@@ -175,7 +175,7 @@ erDiagram
   RUN ||--o{ SOURCE_RUN : covers
 ```
 
-Core tables: `competitor`, `source` (kind, URL, fetch mode, health), `snapshot` (extracted text and hash), `item` (new post or page change, with diff), `team` (lens, noise setting, Slack channel), `topic`, `judgment`, `delivery`, `feedback`, `run`, `source_run`, `eval_case`, `usage`.
+Core tables: `competitor`, `source` (kind, URL, fetch mode, health), `snapshot` (extracted text and hash), `item` (new post or page change, with diff), `team` (lens, noise setting, Slack channel), `topic`, `judgment`, `delivery`, `feedback`, `run`, `source_run`, `golden_item` (exam items the owner added from votes), `usage`.
 
 ## Repository layout
 

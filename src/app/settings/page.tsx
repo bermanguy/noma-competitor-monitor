@@ -2,7 +2,8 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { competitor, ownerSuggestion, source, team, topic } from "@/db/schema";
 import { sourceHealth } from "@/pipeline/health";
-import { addCompetitor, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, updateTeam, updateTopic } from "./actions";
+import { addCompetitor, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, updateTeam, updateTopic } from "./actions";
+import { toReview } from "@/eval/owner-golden";
 import { getOwnerTexts, OWNER_TEXTS, ownerTextHistoryFor, type OwnerTextKey } from "@/lib/owner-text";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const topics = await d.select().from(topic).where(eq(topic.active, true)).orderBy(topic.id);
   const ownerTexts = await getOwnerTexts(d);
   const history = Object.fromEntries(await Promise.all((Object.keys(OWNER_TEXTS) as OwnerTextKey[]).map(async (k) => [k, await ownerTextHistoryFor(d, k)] as const)));
+  const review = await toReview(d);
   const pending = await d.select().from(ownerSuggestion).where(eq(ownerSuggestion.status, "pending")).orderBy(desc(ownerSuggestion.id));
 
   return (
@@ -28,6 +30,38 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       {error && <div className="notice" style={{ borderColor: "#f3c1c1", background: "#fff3f3" }}>{error}</div>}
       {pending.length > 0 && (
         <div className="notice"><strong>Noma&apos;s site changed.</strong> {pending.length === 1 ? "One suggested update is" : `${pending.length} suggested updates are`} waiting for your approval. <a href="#suggestions">Review</a></div>
+      )}
+
+      {review.length > 0 && (
+        <>
+          <h2 id="review">To review: items a team marked not useful ({review.length})</h2>
+          <p className="muted">Pick the level each team should have got. &quot;Add to the exam&quot; saves your answer as an exam item, so every later exam checks the judge against it.</p>
+          {review.map((r) => (
+            <form key={r.itemId} action={addToExamAction} className="card">
+              <input type="hidden" name="itemId" value={r.itemId} />
+              <div className="muted">{r.competitor}</div>
+              <strong><a href={r.url} target="_blank" rel="noreferrer">{r.title}</a></strong>
+              {r.votes.map((v, n) => (
+                <div key={n} className="team">
+                  <span className={`chip lv-${v.level}`}>{teams.find((t) => t.key === v.team)?.name ?? v.team} got {v.level}</span>{" "}
+                  <span className="muted">Judge: {v.why}</span>
+                  <blockquote>Not useful{v.reason ? `: ${v.reason}` : " (no reason given)"}</blockquote>
+                </div>
+              ))}
+              <div className="row" style={{ marginTop: 10 }}>
+                {teams.map((t) => (
+                  <label key={t.key}>{t.name}{" "}
+                    <select name={`level:${t.key}`} defaultValue={r.levels[t.key] ?? "none"} style={{ width: "auto" }}>
+                      {["alert", "digest", "log", "none"].map((l) => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <input type="text" name="note" placeholder="Why these levels (optional, kept with the exam item)" style={{ marginTop: 8 }} />
+              <button style={{ marginTop: 8 }}>Add to the exam</button>
+            </form>
+          ))}
+        </>
       )}
 
       <h2>Competitors</h2>

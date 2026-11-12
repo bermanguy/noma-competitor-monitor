@@ -8,6 +8,8 @@ import { competitor, source, team, topic, type NoiseLevel, type PageType } from 
 import { discoverSources } from "@/pipeline/discover";
 import { OWNER_TEXTS, restoreOwnerText, setOwnerText, type OwnerTextKey } from "@/lib/owner-text";
 import { applySuggestion, dismissSuggestion } from "@/pipeline/own-site";
+import { addToExam } from "@/eval/owner-golden";
+import type { Level } from "@/db/schema";
 
 export async function addCompetitor(form: FormData) {
   const name = String(form.get("name") ?? "").trim();
@@ -116,4 +118,20 @@ export async function restoreOwnerTextAction(form: FormData) {
   const k = await restoreOwnerText(db(), Number(form.get("id")));
   revalidatePath("/settings");
   redirect("/settings?" + (k ? "added=" + encodeURIComponent(`${OWNER_TEXTS[k].title}: earlier version restored. The version it replaced is kept too.`) : "error=" + encodeURIComponent("That version no longer exists")));
+}
+
+const LEVELS = ["alert", "digest", "log", "none"] as const;
+
+/** The owner turns an item a team marked not useful into an exam item, with the right level for each team. */
+export async function addToExamAction(form: FormData) {
+  const itemId = Number(form.get("itemId"));
+  const expected: Record<string, Level> = {};
+  for (const [k, v] of form.entries()) {
+    if (k.startsWith("level:") && (LEVELS as readonly string[]).includes(String(v))) expected[k.slice(6)] = v as Level;
+  }
+  const g = await addToExam(db(), itemId, expected, String(form.get("note") ?? ""));
+  revalidatePath("/settings");
+  redirect("/settings?" + (g
+    ? "added=" + encodeURIComponent(`Added to the exam. From the next exam on, the judge is checked against your answer for "${g.title ?? g.url}".`)
+    : "error=" + encodeURIComponent("That item could not be added")) + "#review");
 }
