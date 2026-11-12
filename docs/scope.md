@@ -33,3 +33,4 @@ Social media, press wires, review sites, job postings. Cross-source deduplicatio
 - 2026-11-12: frozen.
 - 2026-11-12: database on Render Postgres instead of Neon (one provider, one bill). Watched pages per competitor widened beyond the homepage. First check judges the latest 3 posts per competitor, labelled, digest only. The four confirm-first choices confirmed. Pricing page type added, demoed on a pricing canary because none of the four competitors publishes prices.
 - 2026-11-12: until submission, trust before experience: effort goes to monitoring, judgment and noise; UI polish is deferred (decision 0010).
+- 2026-11-12: "not useful" votes are listed for the owner in Settings and can be added to the exam with the right level per team (decision 0011). No new channel, schedule or user.

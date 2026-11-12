@@ -6,7 +6,8 @@ import { DEFAULT_CANARY_PRICING } from "@/lib/canary";
 import { sourceHealth } from "@/pipeline/health";
 import { addSource, retryItem, runExam, runNow, saveCanary, saveCanaryPricing, saveExamBaseline, updateSource } from "./actions";
 import { examState } from "@/eval/run";
-import { pct } from "@/eval/score";
+import { ownerItemResults, pct } from "@/eval/score";
+import { ownerGolden } from "@/eval/owner-golden";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
     .select({ team: judgment.teamKey, useful: sql<number>`sum(case when ${feedback.useful} then 1 else 0 end)`, total: sql<number>`count(*)` })
     .from(feedback).innerJoin(judgment, eq(feedback.judgmentId, judgment.id)).groupBy(judgment.teamKey);
   const exam = await examState(d);
+  const ownerItems = await ownerGolden(d);
+  const ownerResults = ownerItemResults(exam.last?.outcomes ?? [], ownerItems.map((g) => g.id));
   const [canary] = await d.select().from(setting).where(eq(setting.key, "canary"));
   const [canaryPricing] = await d.select().from(setting).where(eq(setting.key, "canary-pricing"));
 
@@ -150,6 +153,15 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
               <div className="muted">{exam.baseline
                 ? <>Baseline: the exam of {exam.baseline.when.slice(0, 16).replace("T", " ")} UTC ({exam.baseline.promptVersion}). {exam.baseline.when === exam.last.when ? "The result above is the baseline." : "The result above is compared with it."}</>
                 : "No baseline saved yet. Save one to compare later exams with it."}</div>
+              {ownerItems.length > 0 && (
+                <div className="card" style={{ marginTop: 8 }}>
+                  <strong>Added by the owner from team votes</strong> <span className="muted">· {ownerResults.filter((r) => r.agreed).length} of {ownerResults.length} now judged as the owner said</span>
+                  <table style={{ marginTop: 6 }}><tbody>{ownerResults.map((r) => {
+                    const g = ownerItems.find((x) => x.id === r.id)!;
+                    return <tr key={r.id}><td>{g.competitor} · {g.title ?? g.url}</td><td>{r.graded ? r.outcomes.map((o) => <div key={o.team}>{o.team}: owner {o.expected}, judge {o.got} {o.got === o.expected ? "✓" : "✗"}</div>) : <span className="muted">Added after this exam; run the exam to grade it</span>}</td></tr>;
+                  })}</tbody></table>
+                </div>
+              )}
               {exam.regressions.length > 0 && <div className="notice" style={{ borderColor: "#f3c1c1", background: "#fff3f3" }}>Worse than the baseline: {exam.regressions.join("; ")}</div>}
               <details><summary className="muted">Where the judge disagreed with the answer key ({exam.last.outcomes.filter((o) => o.got !== o.expected).length})</summary>
                 <table><tbody>{exam.last.outcomes.filter((o) => o.got !== o.expected).map((o) => <tr key={o.id + o.team}><td>{o.id}</td><td>{o.team}</td><td>expected {o.expected}</td><td>got {o.got}{o.evidenceOk ? "" : " (no evidence)"}</td><td className="muted">{o.why ?? ""}</td></tr>)}</tbody></table>

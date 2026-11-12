@@ -221,3 +221,14 @@ export const ownerTextHistory = pgTable("owner_text_history", {
   replacedBy: text("replaced_by").notNull(),
   replacedAt: timestamp("replaced_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("owner_text_history_key_idx").on(t.key)]);
+
+/**
+ * Exam items the owner added in the app, from a team's "not useful" vote. Same shape as a file in
+ * evals/golden; the live exam reads both. The files stay the versioned set for `npm run eval`.
+ */
+export const goldenItem = pgTable("golden_item", {
+  id: text("id").primaryKey(),
+  fromItemId: integer("from_item_id").notNull().references(() => item.id),
+  data: jsonb("data").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("golden_item_from_item_uq").on(t.fromItemId)]);
