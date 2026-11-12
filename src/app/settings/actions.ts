@@ -135,6 +135,6 @@ export async function addToExamAction(form: FormData) {
   const g = await addToExam(db(), itemId, expected, String(form.get("note") ?? ""));
   revalidatePath("/settings");
   redirect("/settings?" + (g
-    ? "added=" + encodeURIComponent(`Added to the exam. From the next exam on, the judge is checked against your answer for "${g.title ?? g.url}".`)
+    ? "added=" + encodeURIComponent(`Saved to the exam. From the next exam on, the judge is checked against your answer for "${g.title ?? g.url}".`)
     : "error=" + encodeURIComponent("That item could not be added")) + "#review");
 }
