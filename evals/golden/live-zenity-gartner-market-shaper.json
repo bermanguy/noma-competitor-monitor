@@ -1,0 +1,24 @@
+{
+  "id": "live-zenity-gartner-market-shaper",
+  "origin": "live",
+  "competitor": "Zenity",
+  "kind": "post",
+  "pageType": "general",
+  "url": "https://zenity.io/press-release/zenity-named-a-market-shaper-in-gartner-inaugural-emerging-market-quadrant-for-ai-application",
+  "title": "Sep 23, 2026Zenity Named a Market Shaper in Gartner’s Inaugural Emerging Market Quadrant for AI Application SecurityZenity has been named a Market Shaper in Gartner’s inaugural Emerging Market Quadrant for AI Application Security, Startup VendorsRead more",
+  "publishedAt": "2026-09-23",
+  "text": "NEW YORK, Sept. 23, 2026 – Zenity, the AI Security Platform for autonomous AI, today announced it has been named a Market Shaper in Gartner’s inaugural Emerging Market Quadrant for AI Application Security, Startup Vendors. Zenity is one of only two vendors Gartner placed in the Market Shapers quadrant among nearly 20 startup vendors assessed.\nThe recognition follows Gartner naming Zenity the Company to Beat in AI Agent Governance earlier this year. In that research, Gartner stated that Zenity’s “intent-aware runtime defense, comprehensive full-life-cycle observability across SaaS, cloud and endpoint environments, shadow AI discovery and posture management make it the front-runner in this race.”\nTogether, the two Gartner recognitions span two critical dimensions of the emerging AI security market: AI application security and AI agent governance. Zenity believes it is the only company recognized both as a Market Shaper in Gartner’s 2026 Emerging Market Quadrant for AI Application Security and as the Company to Beat in AI Agent Governance.\nGartner describes Market Shapers as moving “beyond the mandatory features of AI application security” to analyze the full spectrum of AI agent behavior, including intent, memory, skills, tool use, data access and system modification. These solutions compare intended permissions with actual behavior to identify misuse and use continuous, event-driven security posture management to “enforce security boundaries at runtime,” combining deterministic controls with agent-powered “guardian agents” rather than relying primarily on passive observation.\nZenity has built its platform around many of these same enterprise security requirements. Zenity provides organizations with continuous discovery and exposure management across their AI estate, intent-aware security at runtime, Runtime Boundaries to govern agent actions, incident response capabilities and Guardian Agents designed to help security teams secure AI agents at scale.\nThe recognition comes amid significant growth for Zenity. The company recently raised $125 million in Series C funding to accelerate its mission to secure the era of autonomous AI and works with Fortune 2000 organizations deploying AI across the enterprise.\n“Autonomous agents are already reasoning, remembering, and acting inside the enterprise and already exposing organizations to incidents the old security playbook can't catch,” said Ben Kliger, co-Founder and CEO of Zenity. “We saw this coming before the market had a name for it, and we've been shaping it ever since: securing AI means understanding what agents intend to do, not just what they're permitted to do. We are proud about Gartner's recognition, but the real proof is the many Fortune 500 organizations trusting Zenity to secure the AI they're running their businesses on. The autonomous AI era is here, and Zenity exists to enable it responsibly and securely.”\nAll Articles",
+  "diff": null,
+  "beforeText": null,
+  "expected": {
+    "marketing": "digest",
+    "product": "log",
+    "rnd": "none"
+  },
+  "labelledBy": "draft",
+  "note": "Gartner Market Shaper placement and category framing: Marketing this week. No new capability.",
+  "tags": [
+    "analyst",
+    "backfill-2026-11-12"
+  ]
+}

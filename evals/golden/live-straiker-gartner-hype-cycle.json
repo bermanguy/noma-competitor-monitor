@@ -1,0 +1,24 @@
+{
+  "id": "live-straiker-gartner-hype-cycle",
+  "origin": "live",
+  "competitor": "Straiker",
+  "kind": "post",
+  "pageType": "general",
+  "url": "https://straiker.ai/blog/straiker-named-in-two-2026-gartner-r-hype-cycle-tm-reports-secure-ai-and-ai-driven-cybersecurity",
+  "title": "BlogOctober 13, 2026Straiker Named in Two 2026 Gartner® Hype Cycle™ Reports: Secure AI and AI-Driven CybersecurityStraiker is listed as a Sample Vendor in the Agentic AI Security category of two Gartner Hype Cycle reports published October 12, 2026: Hype Cycle for Secure AI, 2026 and Hype Cycle for AI-Driven Cybersecurity, 2026.",
+  "publishedAt": "2026-10-13",
+  "text": "Straiker has been named a Sample Vendor in the Agentic AI Security category of two 2026 Gartner® Hype Cycle™ reports published on October 12, 2026:\nStraiker helps enterprises secure the AI agents they build, buy, and deploy. Our agentic AI security platform brings together three core capabilities:\nAI agent discovery and security posture management: Discover AI inventories AI agents, MCP servers, Agent Skills, tools, and permissions to identify security risks across the agentic estate.\nAI security testing and red teaming: Ascend AI performs autonomous adversarial testing to uncover exploitable vulnerabilities and unsafe agent behavior.\nAI runtime defense and protection: Defend AI detects and blocks malicious or unauthorized agent actions in real time, with an agentic kill switch to stop rogue agents and contain threats.\nSecuring AI Agents Across the Enterprise\nAI agents have different levels of access depending on how they're used. A coding agent like Claude Code or OpenAI Codex may read repositories, execute commands, and modify code. A productivity agent may access internal documents, emails, and connected applications. A custom-built agent may use MCP connections or APIs to update CRM records, process customer requests, or execute business workflows.\nThese capabilities introduce security risks that extend beyond traditional prompt injection, including unauthorized tool use, data exfiltration, excessive permissions, and agents taking actions outside their intended scope.\nFor enterprise security teams, securing these environments requires more than inspecting prompts and responses. They need to discover which agents are running, assess their configurations and permissions, test how they behave under attack, and enforce security policies while agents execute tasks.\nThis is where AI security posture management, AI security testing, and AI runtime defense come together. Security teams need to connect findings from adversarial testing to production controls, monitor agent behavior, and have the ability to block unauthorized actions or contain a compromised agent.\nStraiker addresses these requirements through a unified approach to agentic AI security, helping organizations maintain visibility and control across third-party AI tools, enterprise-built agents, and the systems they connect to.\nTogether, these capabilities help organizations secure AI coding agents like Claude Code and Codex, productivity agents such as AI assistants and chatbots, and custom-built enterprise agents throughout their lifecycle.\nLearn more about Straiker's AI agent security platform.\nSources:\nGartner, Hype Cycle for Secure AI, 2026, Jeremy D'Hoinne, Dionisio Zumerle, Jeff Arias, 12 October 2026.\nGartner, Hype Cycle for AI-Driven Cybersecurity, 2026, Jeremy D'Hoinne, Craig Porter, Josh Murphy, Christine Lee, 12 October 2026.\nGartner Objectivity Disclaimer: Gartner does not endorse any company, vendor, product, or service depicted in its publications, and does not advise technology users to select only those vendors with the highest ratings or other designation. Gartner publications consist of the opinions of Gartner’s business and technology insights organization and should not be construed as statements of fact. Gartner disclaims all warranties, expressed or implied, with respect to this publication, including any warranties of merchantability or fitness for a particular purpose.\nGartner and Hype Cycle are trademarks of Gartner, Inc. and/or its affiliates.",
+  "diff": null,
+  "beforeText": null,
+  "expected": {
+    "marketing": "log",
+    "product": "log",
+    "rnd": "none"
+  },
+  "labelledBy": "draft",
+  "note": "Sample-vendor mention in a Gartner Hype Cycle; restates existing capabilities. Keep a record only.",
+  "tags": [
+    "analyst",
+    "backfill-2026-11-12"
+  ]
+}

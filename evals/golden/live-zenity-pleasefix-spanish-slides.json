@@ -1,0 +1,24 @@
+{
+  "id": "live-zenity-pleasefix-spanish-slides",
+  "origin": "live",
+  "competitor": "Zenity",
+  "kind": "post",
+  "pageType": "general",
+  "url": "https://labs.zenity.io/post/pleasefix-version-en-espanol",
+  "title": "Security ResearchPleaseFix: Versión en español.Las diapositivas de la charla de ekoparty 2026Inbar Raz",
+  "publishedAt": null,
+  "text": "ekoparty 2026\nEl 9 de octubre de 2026, en la conferencia ekoparty, di la versión en español de la charla “PleaseFix” que dieron Michael y Stav en BlackHat. Traduje la presentación completa para que la gente hispanohablante pudiera leerla en su idioma materno.\nDado que el español es mi tercer idioma, no esperéis una traducción perfecta :-)\nLas diapositivas de la charla se pueden descargar AQUÍ.\nGracias por leer!",
+  "diff": null,
+  "beforeText": null,
+  "expected": {
+    "marketing": "none",
+    "product": "none",
+    "rnd": "none"
+  },
+  "labelledBy": "draft",
+  "note": "A short Spanish note linking to translated conference slides. Nothing new for any team.",
+  "tags": [
+    "noise",
+    "backfill-2026-11-12"
+  ]
+}
