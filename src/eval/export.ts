@@ -16,7 +16,8 @@ export async function exportGolden(db: DB, opts: { ids?: number[]; latest?: numb
   const rows = opts.ids?.length
     ? await base.where(inArray(item.id, opts.ids))
     : await base.where(and(eq(item.status, "judged"), eq(item.isCanary, false))).orderBy(desc(item.id)).limit(opts.latest ?? 30);
-  return rows.filter((r) => !r.i.isCanary).map(({ i, c, pageType }) => ({
+  // Picked by id (the owner's "Add to the exam"), a test-page item is allowed; the bulk download leaves them out.
+  return rows.filter((r) => opts.ids?.length || !r.i.isCanary).map(({ i, c, pageType }) => ({
     id: `live-${slug(c.name)}-${slug(i.title ?? new URL(i.url).pathname)}`,
     origin: "live", competitor: c.name, kind: i.kind, pageType, url: i.url, title: i.title,
     publishedAt: i.publishedAt?.toISOString().slice(0, 10) ?? null, text: i.text, diff: i.diff, beforeText: i.beforeText,

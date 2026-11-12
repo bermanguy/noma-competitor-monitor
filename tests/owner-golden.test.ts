@@ -42,6 +42,15 @@ describe("not-useful votes become exam items", () => {
     expect((await ownerGolden(db)).map((x) => x.expected)).toEqual([{ marketing: "none" }]);
   });
 
+  it("a test-page (canary) item can be added too", async () => {
+    const db = await testDb();
+    const itemId = await setup(db);
+    await db.update(item).set({ isCanary: true });
+    const [r] = await toReview(db);
+    expect(r).toMatchObject({ itemId, isTest: true });
+    expect(await addToExam(db, itemId, { marketing: "digest" }, "")).toMatchObject({ id: `owner-${itemId}`, expected: { marketing: "digest" } });
+  });
+
   it("the live exam grades the owner's item and the report shows it", async () => {
     const db = await testDb();
     const itemId = await setup(db);
