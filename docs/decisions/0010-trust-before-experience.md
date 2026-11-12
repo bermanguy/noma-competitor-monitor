@@ -1,6 +1,6 @@
 # 0010. Until submission, trust comes before experience
 
-- Status: Accepted by the product owner, 2026-11-12
+- Status: Accepted by the product owner, 2026-11-12. Superseded in part by 0011 once the baseline is locked.
 - Date: 2026-11-12
 - Decided by: Guy (product owner), in the project thread
 
