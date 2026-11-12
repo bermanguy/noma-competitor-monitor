@@ -7,7 +7,8 @@ export function GET(req: NextRequest) {
   const next = req.nextUrl.searchParams.get("next") ?? "/";
   const safe = next.startsWith("/") && !next.startsWith("//") ? next : "/";
   const target = v.role === "owner" && isBuilderPath(safe) ? "/" : safe;
-  const res = NextResponse.redirect(new URL(target, req.url));
-  res.cookies.set(VIEW_AS_COOKIE, v.key, { path: "/", httpOnly: true, sameSite: "lax", secure: req.nextUrl.protocol === "https:", maxAge: 60 * 60 * 24 * 30 });
+  // A relative Location: behind Render's proxy, req.url is the internal address (localhost:10000).
+  const res = new NextResponse(null, { status: 303, headers: { Location: target } });
+  res.cookies.set(VIEW_AS_COOKIE, v.key, { path: "/", httpOnly: true, sameSite: "lax", secure: req.headers.get("x-forwarded-proto") === "https" || req.nextUrl.protocol === "https:", maxAge: 60 * 60 * 24 * 30 });
   return res;
 }

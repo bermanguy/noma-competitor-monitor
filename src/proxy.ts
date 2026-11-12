@@ -24,7 +24,10 @@ export function proxy(req: NextRequest) {
 /** The builder area is shown only when viewing as the builder; opening it switches the view to the builder. */
 function viewAs(req: NextRequest) {
   if (isBuilderPath(req.nextUrl.pathname) && viewerFor(req.cookies.get(VIEW_AS_COOKIE)?.value).role !== "builder") {
-    return NextResponse.redirect(new URL(`/view-as?as=builder&next=${encodeURIComponent(req.nextUrl.pathname)}`, req.url));
+    // Built from the public host: behind Render's proxy, req.url is the internal address (localhost:10000).
+    const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? req.nextUrl.host;
+    const proto = req.headers.get("x-forwarded-proto") ?? req.nextUrl.protocol.replace(":", "");
+    return NextResponse.redirect(`${proto}://${host}/view-as?as=builder&next=${encodeURIComponent(req.nextUrl.pathname)}`, 303);
   }
   return NextResponse.next();
 }
