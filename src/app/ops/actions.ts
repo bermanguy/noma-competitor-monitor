@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { competitor, item, setting, source, type FetchMode, type PageType, type SourceKind } from "@/db/schema";
 import { runPipeline } from "@/pipeline/run";
+import { saveBaseline, startExam } from "@/eval/run";
 
 export async function runNow() {
   // Runs in the background of the web process; the run record shows progress.
@@ -56,4 +57,16 @@ export async function addSource(form: FormData) {
 export async function retryItem(form: FormData) {
   await db().update(item).set({ status: "pending", statusDetail: null }).where(eq(item.id, Number(form.get("id"))));
   revalidatePath("/ops");
+}
+
+/** Grades the live prompts on the golden set, in the background. About 2 minutes and a few dollars. */
+export async function runExam() {
+  const started = await startExam(db());
+  redirect("/ops?msg=" + encodeURIComponent(started ? "Exam started. It takes about 2 minutes; refresh to see the result under Output quality." : "An exam is already running."));
+}
+
+export async function saveExamBaseline() {
+  await saveBaseline(db());
+  revalidatePath("/ops");
+  redirect("/ops?msg=" + encodeURIComponent("Saved as the baseline. Later exams are compared with it."));
 }

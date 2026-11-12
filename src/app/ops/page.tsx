@@ -4,7 +4,9 @@ import { competitor, feedback, item, judgment, run, setting, source, usage } fro
 import { config } from "@/config";
 import { DEFAULT_CANARY_PRICING } from "@/lib/canary";
 import { sourceHealth } from "@/pipeline/health";
-import { addSource, retryItem, runNow, saveCanary, saveCanaryPricing, updateSource } from "./actions";
+import { addSource, retryItem, runExam, runNow, saveCanary, saveCanaryPricing, saveExamBaseline, updateSource } from "./actions";
+import { examState } from "@/eval/run";
+import { pct } from "@/eval/score";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,7 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
   const fb = await d
     .select({ team: judgment.teamKey, useful: sql<number>`sum(case when ${feedback.useful} then 1 else 0 end)`, total: sql<number>`count(*)` })
     .from(feedback).innerJoin(judgment, eq(feedback.judgmentId, judgment.id)).groupBy(judgment.teamKey);
+  const exam = await examState(d);
   const [canary] = await d.select().from(setting).where(eq(setting.key, "canary"));
   const [canaryPricing] = await d.select().from(setting).where(eq(setting.key, "canary-pricing"));
 
@@ -128,7 +131,32 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
             </tbody>
           </table>
           <p className="muted">Golden set: <a href="/ops/golden-export?latest=30">Download the latest 30 judged items for the exam</a>, then add them with <code>npm run golden:export -- --from-file</code> and label each one.</p>
-          <p className="muted">Judgments held back because a quote was not in the source: {heldEvidence[0]?.n ?? 0}. Golden-set precision per team: see the latest eval report in the repository.</p>
+          <p className="muted">Judgments held back because a quote was not in the source: {heldEvidence[0]?.n ?? 0}.</p>
+
+          <h2>Exam (golden set)</h2>
+          <p className="muted">Hand-labelled items with the right level for each team. The exam judges them with today&apos;s prompts and checks the answers. Precision: of what we would send, how much the team should get. Recall: of what the team should get, how much we send.</p>
+          {exam.last ? (
+            <>
+              <table>
+                <thead><tr><th>Team</th><th>Precision</th><th>Recall</th><th>Exact level</th><th>Severe misses</th></tr></thead>
+                <tbody>
+                  {exam.last.scores.map((s) => {
+                    const b = exam.baseline?.scores.find((x) => x.team === s.team);
+                    return <tr key={s.team}><td>{s.team}</td><td>{pct(s.precision)}{b ? <span className="muted"> (baseline {pct(b.precision)})</span> : null}</td><td>{pct(s.recall)}</td><td>{s.exact}/{s.graded}</td><td>{s.severe.length}</td></tr>;
+                  })}
+                </tbody>
+              </table>
+              <div className="muted">{exam.last.graded} items · {exam.last.promptVersion} · {exam.last.model} · {exam.last.when.slice(0, 16).replace("T", " ")} UTC · ${exam.last.costUsd.toFixed(2)}{exam.last.failed.length ? ` · ${exam.last.failed.length} failed` : ""}</div>
+              {exam.regressions.length > 0 && <div className="notice" style={{ borderColor: "#f3c1c1", background: "#fff3f3" }}>Worse than the baseline: {exam.regressions.join("; ")}</div>}
+              <details><summary className="muted">Where the judge disagreed with the answer key ({exam.last.outcomes.filter((o) => o.got !== o.expected).length})</summary>
+                <table><tbody>{exam.last.outcomes.filter((o) => o.got !== o.expected).map((o) => <tr key={o.id + o.team}><td>{o.id}</td><td>{o.team}</td><td>expected {o.expected}</td><td>got {o.got}{o.evidenceOk ? "" : " (no evidence)"}</td></tr>)}</tbody></table>
+              </details>
+            </>
+          ) : <div className="muted">No exam run yet.</div>}
+          <div className="row" style={{ marginTop: 8 }}>
+            <form action={runExam}><button disabled={exam.running}>{exam.running ? "Exam running…" : "Run the exam"}</button></form>
+            {exam.last && <form action={saveExamBaseline}><button className="secondary">Use this result as the baseline</button></form>}
+          </div>
         </div>
       </div>
 
