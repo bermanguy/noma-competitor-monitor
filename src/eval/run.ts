@@ -50,7 +50,7 @@ export async function runEval(db: DB, opts: { model?: string; only?: string[]; i
           if (!expected) continue;
           const j = r.judgments.find((x) => x.team === team);
           const got: Level = j?.level ?? "none";
-          outcomes.push({ id: g.id, team, expected, got, evidenceOk: got === "none" || got === "log" || quotesInSource(j?.evidence ?? [], sourceText) });
+          outcomes.push({ id: g.id, team, expected, got, evidenceOk: got === "none" || got === "log" || quotesInSource(j?.evidence ?? [], sourceText), why: j?.why });
         }
       } catch (e) {
         failed.push(`${g.id}: ${(e as Error).message.slice(0, 120)}`);

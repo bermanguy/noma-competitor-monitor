@@ -29,6 +29,7 @@ describe("exam", () => {
     expect(r.unlabelled).toBe(1);
     expect(r.scores.find((s) => s.team === "marketing")).toMatchObject({ precision: 1, recall: 1 });
     expect(r.scores.find((s) => s.team === "rnd")).toMatchObject({ recall: 0, evidenceFailures: ["a"] });
+    expect(r.outcomes.find((o) => o.team === "rnd")?.why).toBe("w");
     expect(judgeReply).toHaveBeenCalledTimes(1);
   });
 
