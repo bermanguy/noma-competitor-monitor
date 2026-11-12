@@ -17,6 +17,12 @@ export const config = {
   publicUrl: (process.env.PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
   heartbeatUrl: process.env.HEARTBEAT_URL,
   opsWebhookEnv: "SLACK_WEBHOOK_OPS",
+  /** Decisions for the business owner (suggestions to approve, a team unhappy with its items). Optional. */
+  ownerWebhookEnv: "SLACK_WEBHOOK_OWNER",
+  /** Noma's own pages. When they change, the system drafts updates to the company profile and topics for the owner to approve. */
+  ownSitePages: (process.env.OWN_SITE_PAGES ?? "https://noma.security/,https://noma.security/platform").split(",").map((s) => s.trim()).filter(Boolean),
+  /** Drafts those suggestions. Runs only when one of Noma's pages changed. */
+  suggestModel: process.env.SUGGEST_MODEL ?? "claude-sonnet-5-5",
   browserExecutable: process.env.BROWSER_EXECUTABLE,
   userAgent:
     process.env.FETCH_USER_AGENT ??

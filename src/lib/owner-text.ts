@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import type { DB } from "../db/client";
-import { setting } from "../db/schema";
+import { ownerTextHistory, setting } from "../db/schema";
 
 /**
  * Owner-owned prompt text that is not per team or per topic. The files in src/prompts/owner/ are the
@@ -26,6 +26,23 @@ export async function getOwnerTexts(db: DB): Promise<Record<OwnerTextKey, string
   return Object.fromEntries(keys.map((k) => [k, byKey.get(settingKey(k))?.trim() || ownerTextDefault(k)])) as Record<OwnerTextKey, string>;
 }
 
-export async function setOwnerText(db: DB, k: OwnerTextKey, value: string) {
+/** Saves a new version and keeps the one it replaces, so any change can be seen and undone. */
+export async function setOwnerText(db: DB, k: OwnerTextKey, value: string, by: "owner" | "suggestion" | "restore" = "owner") {
+  const current = (await getOwnerTexts(db))[k];
+  if (current.trim() === value.trim()) return;
+  await db.insert(ownerTextHistory).values({ key: settingKey(k), value: current, replacedBy: by });
   await db.insert(setting).values({ key: settingKey(k), value }).onConflictDoUpdate({ target: setting.key, set: { value, updatedAt: new Date() } });
+}
+
+/** Earlier versions of one owner text, newest first. */
+export async function ownerTextHistoryFor(db: DB, k: OwnerTextKey, limit = 5) {
+  return db.select().from(ownerTextHistory).where(eq(ownerTextHistory.key, settingKey(k))).orderBy(desc(ownerTextHistory.id)).limit(limit);
+}
+
+export async function restoreOwnerText(db: DB, historyId: number): Promise<OwnerTextKey | null> {
+  const [h] = await db.select().from(ownerTextHistory).where(eq(ownerTextHistory.id, historyId));
+  const k = h?.key.replace(/^owner:/, "") as OwnerTextKey | undefined;
+  if (!h || !k || !(k in OWNER_TEXTS)) return null;
+  await setOwnerText(db, k, h.value, "restore");
+  return k;
 }

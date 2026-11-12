@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray } from "drizzle-orm";
 import { config } from "../config";
 import type { DB } from "../db/client";
-import { competitor, delivery, item, judgment, team } from "../db/schema";
+import { competitor, delivery, item, judgment, team, type DeliveryKind } from "../db/schema";
 import { plan } from "./route";
 import { alertMessage, digestMessage, postToSlack, type SlackItem } from "./slack";
 
@@ -21,7 +21,7 @@ export function localNow(d = new Date()) {
 export async function sendOnce(
   db: DB,
   key: string,
-  meta: { kind: "alert" | "digest" | "ops"; teamKey: string | null; judgmentIds: number[] },
+  meta: { kind: DeliveryKind; teamKey: string | null; judgmentIds: number[] },
   webhookEnv: string,
   payload: unknown,
 ): Promise<"sent" | "skipped" | "failed"> {

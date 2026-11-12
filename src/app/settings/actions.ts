@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { competitor, source, team, topic, type NoiseLevel, type PageType } from "@/db/schema";
 import { discoverSources } from "@/pipeline/discover";
-import { OWNER_TEXTS, setOwnerText, type OwnerTextKey } from "@/lib/owner-text";
+import { OWNER_TEXTS, restoreOwnerText, setOwnerText, type OwnerTextKey } from "@/lib/owner-text";
+import { applySuggestion, dismissSuggestion } from "@/pipeline/own-site";
 
 export async function addCompetitor(form: FormData) {
   const name = String(form.get("name") ?? "").trim();
@@ -93,4 +94,26 @@ export async function updateTeam(form: FormData) {
   await db().update(team).set({ lens, noise }).where(eq(team.key, String(form.get("key"))));
   revalidatePath("/settings");
   redirect("/settings?added=" + encodeURIComponent("Saved. Changes apply from the next check."));
+}
+
+/** The owner approves a suggestion from Noma's site, after editing the profile text and ticking the topic changes they want. */
+export async function approveSuggestion(form: FormData) {
+  const ok = await applySuggestion(db(), Number(form.get("id")), {
+    company: form.get("useCompany") === "1" ? String(form.get("company") ?? "") : null,
+    topicNames: form.getAll("topics").map(String),
+  });
+  revalidatePath("/settings");
+  redirect("/settings?" + (ok ? "added=" + encodeURIComponent("Approved. The updates apply from the next check, and the earlier version is kept under Earlier versions.") : "error=" + encodeURIComponent("That suggestion was already handled")));
+}
+
+export async function dismissSuggestionAction(form: FormData) {
+  await dismissSuggestion(db(), Number(form.get("id")));
+  revalidatePath("/settings");
+  redirect("/settings?added=" + encodeURIComponent("Dismissed. Nothing was changed."));
+}
+
+export async function restoreOwnerTextAction(form: FormData) {
+  const k = await restoreOwnerText(db(), Number(form.get("id")));
+  revalidatePath("/settings");
+  redirect("/settings?" + (k ? "added=" + encodeURIComponent(`${OWNER_TEXTS[k].title}: earlier version restored. The version it replaced is kept too.`) : "error=" + encodeURIComponent("That version no longer exists")));
 }

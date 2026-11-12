@@ -123,7 +123,7 @@ export const judgment = pgTable("judgment", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("judgment_item_team_uq").on(t.itemId, t.teamKey)]);
 
-export type DeliveryKind = "alert" | "digest" | "ops";
+export type DeliveryKind = "alert" | "digest" | "ops" | "owner";
 
 /** A Slack post. The key makes retries safe: one key, one post. */
 export const delivery = pgTable("delivery", {
@@ -185,3 +185,35 @@ export const setting = pgTable("setting", {
   value: text("value").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export type SuggestionStatus = "pending" | "approved" | "dismissed" | "superseded";
+export interface ProposedTopic { name: string; description: string; teamKeys: string[] }
+
+/**
+ * A suggested update to the owner's text, drafted when Noma's own site changes. Nothing changes until
+ * the owner approves it in Settings. A newer suggestion for the same page replaces a pending one.
+ */
+export const ownerSuggestion = pgTable("owner_suggestion", {
+  id: serial("id").primaryKey(),
+  pageUrl: text("page_url").notNull(),
+  status: text("status").$type<SuggestionStatus>().notNull().default("pending"),
+  whatChanged: text("what_changed").notNull(),
+  /** Page text the change is measured from: the text when the last suggestion for this page was decided. */
+  baseText: text("base_text").notNull(),
+  newText: text("new_text").notNull(),
+  company: text("company"),
+  newTopics: jsonb("new_topics").$type<ProposedTopic[]>().notNull().default([]),
+  changedTopics: jsonb("changed_topics").$type<ProposedTopic[]>().notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+}, (t) => [index("owner_suggestion_status_idx").on(t.status)]);
+
+/** Every earlier version of an owner text, so a change can be seen and undone. */
+export const ownerTextHistory = pgTable("owner_text_history", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull(),
+  value: text("value").notNull(),
+  /** Who replaced it: "owner" (edited in Settings), "suggestion" (approved), "restore". */
+  replacedBy: text("replaced_by").notNull(),
+  replacedAt: timestamp("replaced_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("owner_text_history_key_idx").on(t.key)]);

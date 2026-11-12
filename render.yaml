@@ -42,6 +42,8 @@ envVarGroups:
         sync: false
       - key: SLACK_WEBHOOK_OPS
         sync: false
+      - key: SLACK_WEBHOOK_OWNER
+        sync: false
       - key: HEARTBEAT_URL
         sync: false
       - key: APP_TIMEZONE
