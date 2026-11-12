@@ -1,7 +1,13 @@
 [
-  { "name": "MCP security", "description": "Model Context Protocol servers, gateways, tool permissions and attacks through MCP", "teamKeys": ["product", "rnd"] },
-  { "name": "Coding agents", "description": "Security for AI coding assistants and agents on developer endpoints", "teamKeys": ["product", "rnd", "marketing"] },
-  { "name": "Agent runtime protection", "description": "Inline enforcement, guardrails and detection while agents run", "teamKeys": ["product", "rnd"] },
-  { "name": "Category language", "description": "Terms competitors use to name the market, such as AI-SPM, agentic security, AI governance", "teamKeys": ["marketing"] },
-  { "name": "Funding and M&A", "description": "Funding rounds, acquisitions and partnerships", "teamKeys": ["marketing", "product"] }
+  { "name": "AI asset discovery and posture (AI-SPM)", "description": "Finding every agent, MCP server, skill, model and tool in an organisation, including shadow AI, and ranking their risk", "teamKeys": ["product", "rnd"] },
+  { "name": "Agent runtime security (AI-DR)", "description": "Detecting and stopping risky agent behaviour while agents run: inline enforcement, guardrails, behavioural detection, kill switches", "teamKeys": ["product", "rnd"] },
+  { "name": "Agent identity and access control", "description": "Which identity an agent acts as, what it is allowed to access and do, least privilege and approval of agents", "teamKeys": ["product", "rnd"] },
+  { "name": "MCP and agent skills security", "description": "MCP servers, gateways, agent skills and tools: discovery, permissions, tool poisoning and attacks through MCP", "teamKeys": ["product", "rnd"] },
+  { "name": "AI red teaming", "description": "Testing agents and AI apps for weaknesses before attackers do: automated red teaming, multi-turn attacks, published attack research and vulnerabilities", "teamKeys": ["marketing", "product", "rnd"] },
+  { "name": "AI supply chain security", "description": "Risk in models, open-weight weights, packages, repositories and tools that agents depend on", "teamKeys": ["product", "rnd"] },
+  { "name": "Coding and endpoint agents", "description": "Agents employees run on their machines: Cursor, Claude Code, Copilot and other coding assistants", "teamKeys": ["marketing", "product", "rnd"] },
+  { "name": "SaaS and cloud agent platforms", "description": "Which agent platforms a competitor claims to secure: Microsoft Copilot Studio, Salesforce Agentforce, ServiceNow, ChatGPT and Claude Enterprise, AWS Bedrock, Google Vertex", "teamKeys": ["marketing", "product"] },
+  { "name": "AI compliance and governance", "description": "Regulation and frameworks such as the EU AI Act, audit evidence, AI governance programmes", "teamKeys": ["marketing", "product"] },
+  { "name": "Category language", "description": "Terms competitors use to name the market and themselves, such as AI-SPM, AI-DR, agentic security, agent control plane, AI governance", "teamKeys": ["marketing"] },
+  { "name": "Funding, M&A, partners and analysts", "description": "Funding rounds, acquisitions, partnerships, marketplace listings and analyst recognition such as Gartner or Forrester", "teamKeys": ["marketing", "product"] }
 ]
