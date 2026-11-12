@@ -36,8 +36,8 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
 
   return (
     <>
-      <h1>Operator</h1>
-      <p className="lead">Health of every source, every run, model spend and output quality. Business users never see this page.</p>
+      <h1>Builder area</h1>
+      <p className="lead">Health of every source, every run, model spend and output quality. Only the builder sees this page.</p>
       {msg && <div className="notice">{msg}</div>}
 
       <div className="row" style={{ marginBottom: 8 }}>
