@@ -48,6 +48,9 @@ const CHROME = "script,style,noscript,template,nav,footer,svg,iframe,form,dialog
 export function extractMain(html: string, url: string, mode: "article" | "page" = "article"): Extracted {
   const doc = dom(html, url).window.document;
   const publishedAt = mode === "article" ? publishedFrom(doc) : null;
+  // The page's own share title is the cleanest; Readability's guess and <title> can pick up site names or teasers.
+  const meta = (sel: string) => doc.querySelector(sel)?.getAttribute("content")?.replace(/\s+/g, " ").trim() || null;
+  const shared = meta('meta[property="og:title"]') ?? meta('meta[name="twitter:title"]');
   let title: string | null = doc.title || null;
   let text = "";
   if (mode === "article") {
@@ -61,7 +64,7 @@ export function extractMain(html: string, url: string, mode: "article" | "page" 
     for (const el of doc.querySelectorAll(CHROME)) el.remove();
     text = blockText(doc.body);
   }
-  return { title: title?.trim() || null, text, publishedAt };
+  return { title: (shared ?? title)?.trim() || null, text, publishedAt };
 }
 
 /** Text with a newline per block element, so diffs work line by line. */
@@ -115,7 +118,9 @@ export function extractListingLinks(html: string, pageUrl: string, prefix: strin
     const rest = path.slice(pre.length + 1);
     if (!rest || /^(page|category|categories|tag|tags|author|topics?)(\/|$)/i.test(rest)) continue;
     if (u.search && /page=|category=|tag=/i.test(u.search)) continue;
-    const title = a.textContent?.replace(/\s+/g, " ").trim() || null;
+    // A card link holds the category, date, title and teaser together; its heading is the title.
+    const heading = a.querySelector("h1,h2,h3,h4,h5,[class*=title i]");
+    const title = (heading ?? a).textContent?.replace(/\s+/g, " ").trim() || null;
     const prev = seen.get(url);
     if (!prev || (title && (!prev.title || title.length > prev.title.length))) seen.set(url, { url, title });
   }
