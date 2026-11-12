@@ -1,0 +1,25 @@
+{
+  "id": "authored-category-tagline",
+  "origin": "authored",
+  "competitor": "Example Co (authored)",
+  "kind": "page_change",
+  "pageType": "general",
+  "url": "https://example.com/",
+  "title": "Example Co",
+  "publishedAt": null,
+  "text": "Example Co\nThe Agentic Trust Platform\nProve every AI agent in your enterprise is safe, compliant and accountable.\nTrusted by Fortune 500 security teams.\nBook a demo\n© 2025 Example Co. All rights reserved.\nWe use cookies to improve your experience.",
+  "diff": "- The AI Agent Security Platform\n- Discover, protect and govern every AI agent across your enterprise.\n+ The Agentic Trust Platform\n+ Prove every AI agent in your enterprise is safe, compliant and accountable.",
+  "beforeText": "Example Co\nThe AI Agent Security Platform\nDiscover, protect and govern every AI agent across your enterprise.\nTrusted by Fortune 500 security teams.\nBook a demo\n© 2025 Example Co. All rights reserved.\nWe use cookies to improve your experience.",
+  "expected": {
+    "marketing": "alert",
+    "product": "log",
+    "rnd": "none"
+  },
+  "labelledBy": "draft",
+  "note": "The homepage headline moves from 'AI Agent Security Platform' to a new category name, 'Agentic Trust Platform'. Category language Marketing must answer today; no new capability for Product or R&D.",
+  "tags": [
+    "category-language",
+    "page-change",
+    "single-team"
+  ]
+}

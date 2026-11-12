@@ -1,0 +1,25 @@
+{
+  "id": "authored-platform-mcp-gateway",
+  "origin": "authored",
+  "competitor": "Example Co (authored)",
+  "kind": "page_change",
+  "pageType": "general",
+  "url": "https://example.com/platform",
+  "title": "Platform",
+  "publishedAt": null,
+  "text": "Platform\nDiscover: find every AI agent, model and dataset across SaaS and cloud.\nProtect: inspect prompts and responses at runtime and block data leaks.\nMCP Gateway: every MCP tool call from coding agents and IDEs passes through an inline gateway that checks server identity, pins tool descriptions and blocks tool-poisoning attempts before execution.\nGovern: map agents to owners and policies.\nIntegrations: Microsoft Copilot Studio, Salesforce Agentforce, AWS Bedrock.",
+  "diff": "+ MCP Gateway: every MCP tool call from coding agents and IDEs passes through an inline gateway that checks server identity, pins tool descriptions and blocks tool-poisoning attempts before execution.",
+  "beforeText": "Platform\nDiscover: find every AI agent, model and dataset across SaaS and cloud.\nProtect: inspect prompts and responses at runtime and block data leaks.\nGovern: map agents to owners and policies.\nIntegrations: Microsoft Copilot Studio, Salesforce Agentforce, AWS Bedrock.",
+  "expected": {
+    "marketing": "digest",
+    "product": "alert",
+    "rnd": "digest"
+  },
+  "labelledBy": "draft",
+  "note": "A new inline MCP gateway with a concrete approach (pinning tool descriptions, checking server identity). Product needs it today as a coverage gap; R&D gets the technique; Marketing should know this week.",
+  "tags": [
+    "mcp",
+    "page-change",
+    "multi-team"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "authored-weak-claim-plans",
+  "origin": "authored",
+  "competitor": "Example Co (authored)",
+  "kind": "post",
+  "pageType": "general",
+  "url": "https://example.com/blog/looking-ahead",
+  "title": "Looking ahead: where agent security goes next",
+  "publishedAt": "2026-11-01",
+  "text": "Looking ahead: where agent security goes next\nNovember 5, 2026\nAgents are moving from pilots to production. Over time we may explore deeper support for browser-based agents, and we are always listening to customers about what to build next. Security teams should start by knowing which agents they run and what those agents can reach. We believe the next year will reward vendors who keep things simple.",
+  "diff": null,
+  "beforeText": null,
+  "expected": {
+    "marketing": "log",
+    "product": "log",
+    "rnd": "none"
+  },
+  "labelledBy": "draft",
+  "note": "Opinion with a vague 'may explore' and no commitment or detail. Keep a record; nothing to send.",
+  "tags": [
+    "weak-claim",
+    "post"
+  ]
+}
