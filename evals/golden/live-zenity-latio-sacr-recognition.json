@@ -1,0 +1,24 @@
+{
+  "id": "live-zenity-latio-sacr-recognition",
+  "origin": "live",
+  "competitor": "Zenity",
+  "kind": "post",
+  "pageType": "general",
+  "url": "https://zenity.io/press-release/zenity-earns-recognition-in-ai-agent-security-reports-from-latio-and-sacr",
+  "title": "Sep 15, 2026Zenity Earns Recognition in AI Agent Security Reports from Latio and SACRIndependent research highlights Zenity’s broad platform coverage, multi-provider approach and alignment with emerging runtime security requirements.",
+  "publishedAt": "2026-09-15",
+  "text": "NEW YORK, Sept. 15, 2026 — Zenity, the leader in security and governance for AI agents, today announced recognition in two independent analyst reports examining the evolving AI agent security market. Latio’s new AI Security report highlights Zenity for the breadth of its platform and ability to secure AI agents across diverse enterprise technology environments, while Software Analyst Cyber Research (SACR) names Zenity a vendor with broad alignment to its ARISE: Agentic Runtime Identity Security Enforcement for Agents framework.\nIn its assessment, Latio notes that the number of integrations and use cases Zenity supports is among the largest it evaluated. The report also points to a growing challenge for enterprises as AI agents are deployed across multiple platforms, providers and business systems. Latio identifies Zenity as one of the few vendors built to address this increasingly complex reality.\nSACR’s report released on September 3rd focuses on the security challenges created by increasingly autonomous AI agents. Its ARISE framework addresses the need to enforce security policies while agents are actively executing, not simply determining whether an agent is authorized before an action begins or document what happened afterward.\nThe framework evaluates agent actions, tool calls, data access, credential use and workflow steps before they are completed. SACR identifies Zenity among vendors that combine multiple agent security capabilities, including runtime behavior analysis, MCP and tool governance, agent identity and delegation context, audit evidence and response.\nThe two recognitions reflect Zenity’s approach to providing a unified security and governance layer for AI agents wherever they are built and deployed. The Zenity platform enables organizations to discover and inventory agents across SaaS applications, hyperscaler platforms, custom frameworks and developer environments. It also helps security teams understand agent access, behavior and risk, govern interactions with tools and data, and enforce security controls at runtime.\n“Enterprises aren’t standardizing on a single AI platform, making visibility and control across the entire agent ecosystem essential,” said Ben Kliger, co-founder and CEO of Zenity. “As organizations deploy agents across SaaS applications, cloud platforms and custom environments, security teams need a consistent way to discover, govern and protect them. The recognition from both Latio and SACR reinforces the need for an approach built for the complex, multi-provider reality enterprises face.”\nThe SACR report’s Zenity profile also highlights the platform’s coverage across SaaS-hosted agents, hyperscaler agent services, custom frameworks, coding agents and endpoint-discovered local services.\nTogether, the Latio and SACR reports underscore a growing requirement for enterprise AI security: consistent visibility, governance and runtime protection across an expanding ecosystem of agents, platforms and providers.\nAll Articles",
+  "diff": null,
+  "beforeText": null,
+  "expected": {
+    "marketing": "digest",
+    "product": "log",
+    "rnd": "none"
+  },
+  "labelledBy": "draft",
+  "note": "Analyst reports backing Zenity's 'leader' claim and SACR's ARISE framework: Marketing this week.",
+  "tags": [
+    "analyst",
+    "backfill-2026-11-12"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "live-pillar-vanta-acquisition",
+  "origin": "live",
+  "competitor": "Pillar Security",
+  "kind": "post",
+  "pageType": "general",
+  "url": "https://pillar.security/blog/vanta-to-acquire-pillar-security-building-trust-in-ai-together",
+  "title": "Read",
+  "publishedAt": "2026-11-09",
+  "text": "By connecting Pillar’s AI security capabilities with Vanta’s leading Agentic Trust Platform, we’ll help organizations turn AI policies into real-time protection - and prove their safeguards work.\nWhen we founded Pillar in 2023, most of the conversation around AI security was about chatbots and prompts. We saw something different coming: AI would move from answering questions to taking action, with agents that access data, use tools and make decisions on a company’s behalf. We built Pillar for that future before it arrived, and as agents moved into production, our customers were ready for them.\nToday, Vanta has signed a definitive agreement to acquire Pillar Security.\nFor us, this is an opportunity to bring together two things that organizations increasingly need to manage as one: how they expect AI to behave, and how they ensure it does.\nWhat we built\nPillar discovers, tests and secures AI applications and agents across their lifecycle, and blocks unauthorized actions at runtime.\nWorking with customers taught us that protecting an agent means understanding the business around it. Take an agent with access to customer records. A security team needs to know why it exists, what it’s allowed to do and who owns the risk. That context shapes how Pillar tests agents and where it draws boundaries at runtime.\nOur research team studies how these systems break and turns each lesson into testing and protection. That work has uncovered critical vulnerabilities rated CVSS 10, including a sandbox escape in n8n that exposed hundreds of thousands of enterprise AI systems to takeover, and a flaw in Google’s Gemini CLI that let a single GitHub issue compromise its supply chain.\nTeams also needed a shared playbook, so we created SAIL. It gives security, engineering and governance teams one way to decide what to protect, where controls belong and how to measure progress. SAIL has passed 50,000 downloads, and maps 91 AI risks across seven lifecycle phases.\nBuilding on Vanta’s leadership in trust\nVanta is the leading Agentic Trust Platform, helping more than 20,000 companies earn and prove trust. Its platform connects the policies, controls, owners and commitments that organizations rely on to manage security, risk and compliance. That gives Vanta a deep understanding of what businesses need to protect—and how they demonstrate that they’re doing it.\nWith its investment in AI governance, Vanta is extending that foundation to the agents acting on an organization’s behalf. Pillar brings the technology to test those agents, understand their behavior and enforce boundaries as they operate.\nTogether, we’ll connect Pillar’s capabilities with Vanta’s Trust Graph so that policies can guide testing and runtime protection, findings can reveal where controls need strengthening, and security activity can provide evidence that safeguards are being enforced.\nAn organization’s AI static policy can't govern systems that act at machine speed. It needs to connect to the systems taking action. Our shared goal is to help organizations govern AI as fast as they adopt it, with protections they can put into practice and trust they can demonstrate.\nWhat’s next\nJoining Vanta lets us bring our work to more teams and connect it to the trust programs they already run.\nThank you to our team for turning hard, unanswered questions into technology organizations rely on. Thank you to our customers for trusting us with difficult problems. And thank you to our partners, investors and the security community for helping shape Pillar and SAIL.\nWe’re excited to build what comes next with Vanta.\n‍\nSubscribe and get the latest security updates\nBack to blog",
+  "diff": null,
+  "beforeText": null,
+  "expected": {
+    "marketing": "alert",
+    "product": "alert",
+    "rnd": "none"
+  },
+  "labelledBy": "draft",
+  "note": "A direct competitor is being acquired by Vanta: Marketing and Product need it today. Nothing technical for R&D.",
+  "tags": [
+    "m-and-a",
+    "multi-team",
+    "backfill-2026-11-12"
+  ]
+}
