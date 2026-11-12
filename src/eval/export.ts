@@ -20,6 +20,6 @@ export async function exportGolden(db: DB, opts: { ids?: number[]; latest?: numb
     id: `live-${slug(c.name)}-${slug(i.title ?? new URL(i.url).pathname)}`,
     origin: "live", competitor: c.name, kind: i.kind, pageType, url: i.url, title: i.title,
     publishedAt: i.publishedAt?.toISOString().slice(0, 10) ?? null, text: i.text, diff: i.diff, beforeText: i.beforeText,
-    expected: null, labelledBy: null, note: "", tags: [],
+    expected: null, labelledBy: null, note: "", tags: [], earlier: [],
   }));
 }
