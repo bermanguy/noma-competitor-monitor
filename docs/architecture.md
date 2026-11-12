@@ -106,7 +106,7 @@ One call per item returns, for each team:
 | `evidence` | 1–3 verbatim quotes from the source supporting the `why` |
 | `topics` | Owner-defined topics the item matches |
 
-The level definitions and each team's lens are owner-owned text files that are inserted into the prompt ([working agreement](process/working-agreement.md)). Four named levels with concrete anchors replace a 1–10 score, because models compress numeric scores toward the middle.
+The company profile (what Noma sells), the level definitions, each team's lens and the topics are owner-owned text, edited in Settings and inserted into the prompt; the files in `src/prompts/owner/` are only the starting versions ([0007](decisions/0007-owner-editable-prompt-meaning.md)). Four named levels with concrete anchors replace a 1–10 score, because models compress numeric scores toward the middle.
 
 Each team's noise setting maps to levels: **quiet** sends `alert` only; **normal** sends `alert` now and `digest` in the morning daily digest (08:00 Israel time in winter, 09:00 in summer); nothing below `digest` is ever sent. Everything, including `log` and `none`, appears in the web feed with its reason.
 
@@ -137,6 +137,8 @@ flowchart LR
 
 - **Scheduling:** Render cron job every 3 hours (UTC). The daily digest goes out with the first run from 08:00 Israel time, which is 08:00 in winter and 09:00 in summer. The owner chose the simple schedule over an exact 09:00 year-round, which would need an hourly wake-up.
 - **Idempotency:** every stage writes keyed rows (source + URL, item + team, delivery key), so re-running a run is always safe.
+- **Three audiences in Slack:** team channels get competitor news; `#competitors-owner` gets decisions (suggested updates when Noma's own site changes, a team marking most items not useful); `#competitors-ops` gets breakages (failing or shrinking sources, crashes, the budget stop, failed deliveries). An outside heartbeat alerts when runs stop altogether.
+- **Keeping the owner's text current:** every run checks Noma's homepage and platform page. A real change (same size threshold as competitor pages) goes to a model that drafts an updated profile and topic changes. They wait in Settings for the owner to edit, approve or dismiss; nothing changes on its own, and every replaced version is kept and can be restored.
 - **Silent breakage:** per-source baselines for items per week and extracted text length; "quiet for longer than usual" and "content shrank" alerts go to #ops; the owner sees a plain Healthy / Needs attention badge.
 - **Missed runs:** each completed run pings an external heartbeat; no ping in 4 hours alerts #ops.
 - **Cost:** per-run and per-month caps on model spend, checked before each call.

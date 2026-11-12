@@ -12,7 +12,7 @@ The judgment depends on business meaning: what Noma sells, what each level (aler
 
 1. **Company profile now.** A short profile of what Noma sells (products, solutions, environments) is part of every judgment prompt.
 2. **Everything editable now.** The company profile, the level definitions, the pricing guidance, the topics and the team briefs are edited in the app (Settings). The repo files are the starting defaults.
-3. **Suggestions tonight.** The system watches Noma's own platform page and, when it changes, drafts an updated profile and topic suggestions for the owner to approve. Nothing changes without approval.
+3. **Suggestions.** The system watches Noma's own homepage and platform page. When one really changes, a model drafts an updated profile and topic changes. The owner sees them in Settings (and in `#competitors-owner` if that webhook is set), can edit them, and approves or dismisses. Nothing changes without approval, and every replaced version is kept and can be restored.
 
 Related setting: the daily digest goes out with the first run from 08:00 Israel time (`DIGEST_HOUR_LOCAL`, `APP_TIMEZONE`): 08:00 in winter, 09:00 in summer. The owner preferred a plain 3-hour schedule over an hourly wake-up that would hold 09:00 exactly. It is a setting, not a separate decision.
 

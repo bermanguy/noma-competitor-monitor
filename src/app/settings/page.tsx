@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { competitor, source, team, topic } from "@/db/schema";
+import { competitor, ownerSuggestion, source, team, topic } from "@/db/schema";
 import { sourceHealth } from "@/pipeline/health";
-import { addCompetitor, addTopic, addWatchedPage, removeTopic, saveOwnerText, setCompetitorActive, updateTeam, updateTopic } from "./actions";
-import { getOwnerTexts, OWNER_TEXTS, type OwnerTextKey } from "@/lib/owner-text";
+import { addCompetitor, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, updateTeam, updateTopic } from "./actions";
+import { getOwnerTexts, OWNER_TEXTS, ownerTextHistoryFor, type OwnerTextKey } from "@/lib/owner-text";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,8 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const teams = await d.select().from(team).orderBy(team.id);
   const topics = await d.select().from(topic).where(eq(topic.active, true)).orderBy(topic.id);
   const ownerTexts = await getOwnerTexts(d);
+  const history = Object.fromEntries(await Promise.all((Object.keys(OWNER_TEXTS) as OwnerTextKey[]).map(async (k) => [k, await ownerTextHistoryFor(d, k)] as const)));
+  const pending = await d.select().from(ownerSuggestion).where(eq(ownerSuggestion.status, "pending")).orderBy(desc(ownerSuggestion.id));
 
   return (
     <>
@@ -24,6 +26,9 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       <p className="lead">Decide who we watch, what we look for, and what each team cares about. Changes apply from the next check.</p>
       {added && <div className="notice">{added}</div>}
       {error && <div className="notice" style={{ borderColor: "#f3c1c1", background: "#fff3f3" }}>{error}</div>}
+      {pending.length > 0 && (
+        <div className="notice"><strong>Noma&apos;s site changed.</strong> {pending.length === 1 ? "One suggested update is" : `${pending.length} suggested updates are`} waiting for your approval. <a href="#suggestions">Review</a></div>
+      )}
 
       <h2>Competitors</h2>
       <table>
@@ -111,6 +116,32 @@ export default async function Settings({ searchParams }: { searchParams: Promise
         </form>
       </div>
 
+      {pending.length > 0 && <h2 id="suggestions">Suggested updates from Noma&apos;s site</h2>}
+      {pending.map((s) => (
+        <form key={s.id} action={approveSuggestion} className="card" style={{ marginBottom: 12 }}>
+          <input type="hidden" name="id" value={s.id} />
+          <div>{s.whatChanged}</div>
+          <div className="muted">Seen on <a href={s.pageUrl}>{s.pageUrl}</a> · {s.createdAt.toISOString().slice(0, 10)}</div>
+          {s.company && (
+            <div style={{ marginTop: 10 }}>
+              <label><input type="checkbox" name="useCompany" value="1" defaultChecked /> <strong>Update &quot;What Noma sells&quot;</strong> to this (you can edit it first):</label>
+              <textarea name="company" defaultValue={s.company} style={{ marginTop: 6, minHeight: 150 }} />
+              <details><summary className="muted">Show the current version</summary><pre style={{ whiteSpace: "pre-wrap" }}>{ownerTexts.company}</pre></details>
+            </div>
+          )}
+          {[...s.newTopics.map((t) => ({ ...t, kind: "New topic" })), ...s.changedTopics.map((t) => ({ ...t, kind: "Update topic" }))].map((t) => (
+            <label key={t.kind + t.name} style={{ display: "block", marginTop: 8 }}>
+              <input type="checkbox" name="topics" value={t.name} defaultChecked /> <strong>{t.kind}: {t.name}</strong>
+              <span className="muted"> · {t.description} · matters to {t.teamKeys.map((k) => teams.find((x) => x.key === k)?.name ?? k).join(", ")}</span>
+            </label>
+          ))}
+          <div className="row" style={{ marginTop: 10 }}>
+            <button>Approve what is ticked</button>
+            <button className="secondary" formAction={dismissSuggestionAction}>Dismiss</button>
+          </div>
+        </form>
+      ))}
+
       <h2>What Noma sells and what the levels mean</h2>
       <p className="muted">Used in every judgment. Keep these current when Noma's products or priorities change.</p>
       <div className="grid2">
@@ -121,6 +152,18 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             <div className="muted">{OWNER_TEXTS[k].help}</div>
             <textarea name="text" defaultValue={ownerTexts[k]} style={{ marginTop: 8, minHeight: 150 }} />
             <button style={{ marginTop: 8 }}>Save</button>
+            {history[k]!.length > 0 && (
+              <details style={{ marginTop: 8 }}>
+                <summary className="muted">Earlier versions ({history[k]!.length})</summary>
+                {history[k]!.map((h) => (
+                  <div key={h.id} style={{ marginTop: 6 }}>
+                    <div className="muted">Replaced {h.replacedAt.toISOString().slice(0, 16).replace("T", " ")} by {h.replacedBy === "suggestion" ? "an approved suggestion" : h.replacedBy === "restore" ? "a restore" : "an edit"}</div>
+                    <pre style={{ whiteSpace: "pre-wrap", maxHeight: 120, overflow: "auto" }}>{h.value}</pre>
+                    <button className="secondary" formAction={restoreOwnerTextAction} name="id" value={h.id}>Restore this version</button>
+                  </div>
+                ))}
+              </details>
+            )}
           </form>
         ))}
       </div>

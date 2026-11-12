@@ -5,6 +5,7 @@ import { assessPending } from "./assess";
 import { activeSources, collectSource } from "./collect";
 import { deliver } from "./deliver";
 import { checkHealth, heartbeat } from "./health";
+import { checkOwnSite, feedbackNotes } from "./own-site";
 
 const STALE_MINUTES = 45;
 
@@ -43,6 +44,16 @@ export async function runPipeline(db: DB, trigger: string) {
     stats.deliveryFailed = d.failed;
   } catch (e) {
     error = (e as Error).stack ?? String(e);
+  }
+
+  // The owner's side: suggestions from Noma's own site, and teams unhappy with their items. Never blocks the run.
+  try {
+    const own = await checkOwnSite(db, runId);
+    stats.suggestions = own.suggestions;
+    if (own.errors.length) console.error(`own site: ${own.errors.join("; ")}`);
+    stats.ownerNotes = await feedbackNotes(db);
+  } catch (e) {
+    console.error(`owner stage failed: ${(e as Error).message}`);
   }
 
   const summary = `Run ${runId}: ${stats.sources} sources (${stats.sourcesFailed} failed), ${stats.newItems} new, ${stats.judged} judged, ${stats.alerts} alerts, ${stats.digests} digests`;
