@@ -33,5 +33,5 @@ function viewAs(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|canary|feedback|api/health|favicon).*)"],
+  matcher: ["/((?!_next|canary|feedback|api/health|favicon|icon|logo\.png).*)"],
 };
