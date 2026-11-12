@@ -93,10 +93,24 @@ export function buildJudgeUser(i: JudgeInput): string {
     .join("\n\n");
 }
 
+/** Matches the judge's team labels to team keys ("Product" or "R&D" count as the key). */
+function teamKeysFixed(r: JudgeResult, teams: JudgeInput["teams"]): JudgeResult {
+  const byLabel = new Map(teams.flatMap((t) => [[t.key.toLowerCase(), t.key], [t.name.toLowerCase(), t.key]] as const));
+  return { ...r, judgments: r.judgments.map((j) => ({ ...j, team: byLabel.get(j.team.trim().toLowerCase()) ?? j.team })) };
+}
+
+const missingTeams = (r: JudgeResult, teams: JudgeInput["teams"]) => teams.filter((t) => !r.judgments.some((j) => j.team === t.key));
+
 export async function judgeItem(db: DB, runId: number | undefined, i: JudgeInput, model = config.judgeModel): Promise<JudgeResult> {
-  const r = await structuredCall({
+  const call = async () => teamKeysFixed(await structuredCall({
     db, runId, purpose: "judge", model, system: JUDGE_SYSTEM, user: buildJudgeUser(i), schema: JudgeResult,
-  });
+  }), i.teams);
+  let r = await call();
+  // A team left out of the answer would silently get nothing, so ask once more.
+  if (missingTeams(r, i.teams).length) {
+    const again = await call();
+    if (missingTeams(again, i.teams).length < missingTeams(r, i.teams).length) r = again;
+  }
   // Only an id that was actually offered counts as the same story.
   const known = r.sameStoryAs != null && (i.earlier ?? []).some((e) => e.id === r.sameStoryAs);
   return { ...r, sameStoryAs: known ? r.sameStoryAs : null, whatsNew: known ? r.whatsNew : null };

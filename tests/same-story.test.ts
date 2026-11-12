@@ -19,10 +19,21 @@ const input = {
 describe("same story", () => {
   it("shows earlier items to the judge and keeps only a link to an item it was shown", async () => {
     expect(buildJudgeUser(input)).toContain('<item id="7" published="2026-10-08">');
-    modelReply.mockResolvedValueOnce({ summary: "s", sameStoryAs: 7, whatsNew: "Nothing", judgments: [] });
+    modelReply.mockResolvedValueOnce({ summary: "s", sameStoryAs: 7, whatsNew: "Nothing", judgments: [{ team: "rnd", level: "log", why: "w", evidence: [], topics: [] }] });
     expect((await judgeItem({} as never, undefined, input)).sameStoryAs).toBe(7);
-    modelReply.mockResolvedValueOnce({ summary: "s", sameStoryAs: 99, whatsNew: "x", judgments: [] });
+    modelReply.mockResolvedValueOnce({ summary: "s", sameStoryAs: 99, whatsNew: "x", judgments: [{ team: "rnd", level: "log", why: "w", evidence: [], topics: [] }] });
     expect(await judgeItem({} as never, undefined, input)).toMatchObject({ sameStoryAs: null, whatsNew: null });
+  });
+
+  it("maps team names to keys and asks again when a team is left out", async () => {
+    const two = { ...input, earlier: [], teams: [{ key: "rnd", name: "R&D", lens: "t" }, { key: "product", name: "Product", lens: "p" }] };
+    const j = (team: string) => ({ team, level: "digest", why: "w", evidence: [], topics: [] });
+    modelReply.mockReset();
+    modelReply.mockResolvedValueOnce({ summary: "s", sameStoryAs: null, whatsNew: null, judgments: [j("R&D")] })
+      .mockResolvedValueOnce({ summary: "s", sameStoryAs: null, whatsNew: null, judgments: [j("rnd"), j("Product")] });
+    const r = await judgeItem({} as never, undefined, two);
+    expect(modelReply).toHaveBeenCalledTimes(2);
+    expect(r.judgments.map((x) => x.team)).toEqual(["rnd", "product"]);
   });
 
   it("groups a story's posts in the digest, with the original first", () => {
