@@ -7,7 +7,7 @@ vi.mock("../src/pipeline/llm", async (orig) => ({
   structuredCall: (...a: unknown[]) => modelReply(...a),
 }));
 const { judgeItem, buildJudgeUser } = await import("../src/pipeline/judge");
-const { groupStories, digestMessages, MAX_BLOCKS } = await import("../src/pipeline/slack");
+const { groupStories, digestMessages, MAX_BLOCKS, digestRatingToken } = await import("../src/pipeline/slack");
 const digestMessage = (t: string, items: SlackItem[]) => digestMessages(t, items)[0]!.payload;
 
 const input = {
@@ -77,6 +77,12 @@ describe("same story", () => {
     expect(at("*MCP security* (1)")).toBeLessThan(at("*Other* (1)"));
     expect(at("why 3")).toBeLessThan(at("*MCP security*"));
     expect(texts.join()).toContain("Runtime security 2 · MCP security 1 · Other 1");
-    expect(part!.judgmentIds.sort()).toEqual([1, 2, 3, 4]);
+    const ids = [...part!.judgmentIds];
+    expect([...ids].sort()).toEqual([1, 2, 3, 4]);
+    // No vote links per line: one signed link at the bottom rates every update in this message.
+    const all = texts.join();
+    expect(all).not.toContain("useful=0");
+    expect(texts.at(-1)).toContain(`ids=${ids.join(".")}&t=${digestRatingToken(ids)}|Rate these 4 updates`);
+    expect(digestRatingToken([1, 2])).not.toBe(digestRatingToken([1, 2, 3]));
   });
 });

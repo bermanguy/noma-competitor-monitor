@@ -27,6 +27,16 @@ export function feedbackToken(judgmentId: number): string {
   return createHmac("sha256", secret).update(String(judgmentId)).digest("hex").slice(0, 20);
 }
 
+/** One signed link rates every update of one digest message, on a single page. */
+export function digestRatingToken(judgmentIds: number[]): string {
+  const secret = process.env.FEEDBACK_SECRET ?? "dev-only-secret";
+  return createHmac("sha256", secret).update(`digest:${judgmentIds.join(".")}`).digest("hex").slice(0, 20);
+}
+
+export function digestRatingUrl(judgmentIds: number[]): string {
+  return `${config.publicUrl}/feedback/digest?ids=${judgmentIds.join(".")}&t=${digestRatingToken(judgmentIds)}`;
+}
+
 export function feedbackUrl(judgmentId: number, useful: boolean): string {
   return `${config.publicUrl}/feedback/${judgmentId}?t=${feedbackToken(judgmentId)}&useful=${useful ? 1 : 0}`;
 }
@@ -85,14 +95,13 @@ export function groupStories(items: SlackItem[]): SlackItem[][] {
   return [...groups.values()];
 }
 
-/** One digest bullet per story: who, what (linked), why it matters for this team, and the vote links. */
+/** One digest bullet per story: who, what (linked) and why it matters for this team. Rating is one link for the whole digest. */
 function storyBullet(group: SlackItem[]): string {
   const [lead, ...rest] = group as [SlackItem, ...SlackItem[]];
   const tags = [lead.kind === "page_change" ? "page change" : "", lead.isCanary ? "TEST PAGE" : "", lead.isBackfill ? "published before monitoring started" : ""].filter(Boolean);
-  const votes = `<${feedbackUrl(lead.judgmentId, true)}|👍>  <${feedbackUrl(lead.judgmentId, false)}|👎>`;
   const lines = [
     `• *${esc(lead.competitor)}* · *<${lead.url}|${esc(lead.title)}>*${tags.length ? ` _(${tags.join(", ")})_` : ""}`,
-    `      ${esc(lead.why)}   ${votes}`,
+    `      ${esc(lead.why)}`,
     ...(lead.related ? [`      ↪ Follow-up to <${lead.related.url}|${esc(lead.related.title)}>${lead.storyNote ? `. New: ${esc(lead.storyNote)}` : ""}`] : []),
     ...rest.map((r) => `      ↪ Same story: <${r.url}|${esc(r.title)}>${r.storyNote ? ` · New: ${esc(r.storyNote)}` : " · nothing new"}`),
   ];
@@ -124,7 +133,7 @@ export function digestMessages(teamName: string, items: SlackItem[], topicOrder:
     { block: { type: "section", text: { type: "mrkdwn", text: `*${esc(x.name)}* (${x.stories.length})` } }, ids: [] as number[] },
     ...x.stories.map((g) => ({ block: { type: "section", text: { type: "mrkdwn", text: storyBullet(g) } }, ids: g.map((i) => i.judgmentId) })),
   ]);
-  const head = 2; // header and overview
+  const head = 3; // header, overview and the rating line
   const chunks: (typeof units)[] = [[]];
   for (const u of units) {
     const cur = chunks[chunks.length - 1]!;
@@ -133,16 +142,18 @@ export function digestMessages(teamName: string, items: SlackItem[], topicOrder:
   }
   return chunks.map((chunk, n) => {
     const part = chunks.length > 1 ? ` · part ${n + 1} of ${chunks.length}` : "";
+    const ids = chunk.flatMap((u) => u.ids);
     return {
       payload: {
         text: `${teamName} digest: ${count}${part}`,
         blocks: [
           { type: "header", text: { type: "plain_text", text: `${teamName} · competitor digest (${count})${part}` } },
-          { type: "context", elements: [{ type: "mrkdwn", text: `${overview ? `${overview}   ·   ` : ""}👍 / 👎 on any line tells us what to send next time.` }] },
+          ...(overview ? [{ type: "context", elements: [{ type: "mrkdwn", text: overview }] }] : []),
           ...chunk.map((u) => u.block),
+          { type: "context", elements: [{ type: "mrkdwn", text: `Was this useful? <${digestRatingUrl(ids)}|Rate ${ids.length === 1 ? "this update" : `these ${ids.length} updates`} →>  Your answers decide what ${esc(teamName)} gets next time.` }] },
         ],
       },
-      judgmentIds: chunk.flatMap((u) => u.ids),
+      judgmentIds: ids,
     };
   });
 }
