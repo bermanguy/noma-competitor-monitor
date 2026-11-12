@@ -22,5 +22,8 @@
     "coding-agents",
     "multi-team",
     "backfill-2026-11-12"
+  ],
+  "expectedTopics": [
+    "Coding and endpoint agents"
   ]
 }

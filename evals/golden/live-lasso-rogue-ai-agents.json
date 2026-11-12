@@ -20,5 +20,10 @@
   "tags": [
     "explainer",
     "backfill-2026-11-12"
+  ],
+  "expectedTopics": [
+    "Agent runtime security (AI-DR)",
+    "AI red teaming",
+    "AI agent runtime security"
   ]
 }

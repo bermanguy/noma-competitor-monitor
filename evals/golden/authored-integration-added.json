@@ -20,5 +20,8 @@
   "tags": [
     "integration",
     "page-change"
+  ],
+  "expectedTopics": [
+    "SaaS and cloud agent platforms"
   ]
 }
