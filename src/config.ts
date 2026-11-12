@@ -6,6 +6,8 @@ export const config = {
   budgetPerMonthUsd: Number(process.env.BUDGET_PER_MONTH_USD ?? 40),
   minChangeChars: Number(process.env.MIN_CHANGE_CHARS ?? 40),
   fetchTimeoutMs: Number(process.env.FETCH_TIMEOUT_MS ?? 20000),
+  /** On a post source's first check, the latest N posts are judged (labelled) so a new competitor shows value on day one. */
+  backfillPosts: Number(process.env.BACKFILL_POSTS ?? 3),
   maxPostsPerSourcePerRun: Number(process.env.MAX_POSTS_PER_SOURCE_PER_RUN ?? 10),
   digestHourLocal: Number(process.env.DIGEST_HOUR_LOCAL ?? 9),
   timezone: process.env.APP_TIMEZONE ?? "Asia/Jerusalem",

@@ -74,6 +74,8 @@ export const item = pgTable("item", {
   /** Dedupe key: post URL for posts, source + new hash for page changes. */
   dedupeKey: text("dedupe_key").notNull(),
   isCanary: boolean("is_canary").notNull().default(false),
+  /** One of the latest posts found on a source's first check: judged, labelled, never an urgent alert. */
+  isBackfill: boolean("is_backfill").notNull().default(false),
 }, (t) => [uniqueIndex("item_dedupe_uq").on(t.dedupeKey), index("item_status_idx").on(t.status)]);
 
 export type NoiseLevel = "quiet" | "normal";

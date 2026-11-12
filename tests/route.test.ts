@@ -24,6 +24,12 @@ describe("plan", () => {
     expect(p.alerts.get("mkt")).toEqual([2]);
     expect(p.digest.get("mkt")).toBeUndefined();
   });
+  it("never sends backfill as an alert, and quiet teams don't get it", () => {
+    const b = { ...c(1, "product", "alert"), isBackfill: true };
+    expect(plan([b], [t("product")], new Set(), new Map()).digest.get("product")).toEqual([1]);
+    expect(plan([b], [t("product")], new Set(), new Map()).alerts.size).toBe(0);
+    expect(plan([b], [t("product", "quiet")], new Set(), new Map()).digest.size).toBe(0);
+  });
   it("skips what was already sent", () => {
     const p = plan([c(1, "rnd", "alert")], [t("rnd")], new Set([1]), new Map());
     expect(p.alerts.size).toBe(0);

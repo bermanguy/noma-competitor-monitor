@@ -75,6 +75,8 @@ async function collectPosts(db: DB, s: Source, c: Competitor, body: string, fina
   const existing = new Set(
     (await db.select({ k: item.dedupeKey }).from(item).where(inArray(item.dedupeKey, keys))).map((r) => r.k),
   );
+  // Newest first, so the first-check backfill takes the latest posts. Listings keep page order.
+  if (s.kind === "feed") entries.sort((a, b) => (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0));
   const fresh = entries.filter((e) => !existing.has(`post:${e.url}`));
   const firstCrawl = !s.baselinedAt;
   let newItems = 0;
@@ -85,7 +87,9 @@ async function collectPosts(db: DB, s: Source, c: Competitor, body: string, fina
       publishedAt: e.publishedAt, dedupeKey: `post:${e.url}`, isCanary: isCanary(s),
     };
     const old = e.publishedAt && s.baselinedAt && e.publishedAt.getTime() < s.baselinedAt.getTime() - OLD_POST_DAYS * 864e5;
-    if (firstCrawl || old || i >= config.maxPostsPerSourcePerRun) {
+    // First check: the latest few posts are judged and labelled; everything older is silent history.
+    const backfill = firstCrawl && i < config.backfillPosts;
+    if ((firstCrawl && !backfill) || old || i >= config.maxPostsPerSourcePerRun) {
       await db.insert(item).values({
         ...base, text: "", status: "baseline",
         statusDetail: firstCrawl ? "present when monitoring started" : old ? "published before monitoring started" : "over the per-run limit; treated as backlog",
@@ -93,11 +97,16 @@ async function collectPosts(db: DB, s: Source, c: Competitor, body: string, fina
       continue;
     }
     const page = await fetchSource(e.url, s.fetchMode);
-    if (!page.ok) continue; // retried next run, since no item row was written
+    if (!page.ok) {
+      // A backfill post that can't be read becomes history; otherwise the next run would treat it as new.
+      if (backfill) await db.insert(item).values({ ...base, text: "", status: "baseline", statusDetail: "present when monitoring started" }).onConflictDoNothing();
+      continue; // a normal new post is retried next run, since no item row was written
+    }
     const ex = extractMain(page.body, page.url);
     const inserted = await db.insert(item).values({
       ...base, title: e.title ?? ex.title, publishedAt: e.publishedAt ?? ex.publishedAt,
-      text: ex.text, status: "pending",
+      text: ex.text, status: "pending", isBackfill: backfill,
+      statusDetail: backfill ? "published before monitoring started" : null,
     }).onConflictDoNothing().returning({ id: item.id });
     newItems += inserted.length;
   }

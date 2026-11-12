@@ -6,6 +6,8 @@ export interface Candidate {
   level: Level;
   evidenceOk: boolean;
   createdAt: Date;
+  /** Published before monitoring started: at most a digest item, never an urgent alert. */
+  isBackfill?: boolean;
 }
 
 export interface TeamPolicy {
@@ -26,6 +28,7 @@ export interface RoutePlan {
  * - Only judgments that passed the evidence check are ever sent.
  * - "alert" goes out now, up to the team's daily cap; overflow moves to the digest.
  * - "digest" goes to the daily digest, unless the team chose "quiet".
+ * - Backfill (published before monitoring started) is never an alert; at most it joins the digest.
  * - "log" and "none" are never sent; they stay visible in the web feed.
  */
 export function plan(
@@ -41,7 +44,9 @@ export function plan(
   for (const c of sorted) {
     const t = byKey.get(c.teamKey);
     if (!t || !c.evidenceOk || alreadySent.has(c.judgmentId)) continue;
-    if (c.level === "alert") {
+    if (c.isBackfill) {
+      if ((c.level === "alert" || c.level === "digest") && t.noise === "normal") push(digest, t.key, c.judgmentId);
+    } else if (c.level === "alert") {
       const sent = (alertsSentToday.get(t.key) ?? 0) + (alerts.get(t.key)?.length ?? 0);
       if (sent < t.dailyAlertCap) push(alerts, t.key, c.judgmentId);
       else if (t.noise === "normal") push(digest, t.key, c.judgmentId);

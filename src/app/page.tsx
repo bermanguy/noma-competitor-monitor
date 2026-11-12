@@ -63,6 +63,7 @@ export default async function Feed({ searchParams }: { searchParams: Promise<{ t
               {i.firstSeenAt.toISOString().slice(0, 16).replace("T", " ")} UTC
             </span>
             {i.isCanary && <span className="chip lv-log">test page</span>}
+            {i.isBackfill && <span className="chip lv-log">before monitoring started</span>}
           </div>
           <div style={{ marginTop: 4 }}>
             <a href={i.url} target="_blank" rel="noreferrer"><strong>{i.title ?? i.url}</strong></a>

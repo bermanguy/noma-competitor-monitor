@@ -12,6 +12,7 @@ export interface SlackItem {
   evidence: string[];
   publishedAt: Date | null;
   isCanary: boolean;
+  isBackfill?: boolean;
 }
 
 /** Feedback links are signed so a link only rates the judgment it was sent with. */
@@ -29,7 +30,7 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 function itemBlocks(i: SlackItem) {
   const label = i.kind === "page_change" ? "Page change" : "New post";
   const date = i.publishedAt ? ` · published ${i.publishedAt.toISOString().slice(0, 10)}` : "";
-  const canary = i.isCanary ? " · TEST PAGE" : "";
+  const canary = (i.isCanary ? " · TEST PAGE" : "") + (i.isBackfill ? " · published before monitoring started" : "");
   return [
     {
       type: "section",

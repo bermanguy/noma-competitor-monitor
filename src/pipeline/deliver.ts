@@ -51,7 +51,7 @@ async function slackItems(db: DB, ids: number[]): Promise<Map<number, SlackItem>
       j.id,
       {
         judgmentId: j.id, competitor: c.name, title: i.title ?? i.url, url: i.url, kind: i.kind, level: j.level,
-        why: j.why, evidence: j.evidence, publishedAt: i.publishedAt, isCanary: i.isCanary,
+        why: j.why, evidence: j.evidence, publishedAt: i.publishedAt, isCanary: i.isCanary, isBackfill: i.isBackfill,
       },
     ]),
   );
@@ -62,8 +62,9 @@ export async function deliver(db: DB, now = new Date()) {
   const since = new Date(now.getTime() - 7 * 864e5);
   const teams = await db.select().from(team);
   const candidates = await db
-    .select({ judgmentId: judgment.id, teamKey: judgment.teamKey, level: judgment.level, evidenceOk: judgment.evidenceOk, createdAt: judgment.createdAt })
+    .select({ judgmentId: judgment.id, teamKey: judgment.teamKey, level: judgment.level, evidenceOk: judgment.evidenceOk, createdAt: judgment.createdAt, isBackfill: item.isBackfill })
     .from(judgment)
+    .innerJoin(item, eq(judgment.itemId, item.id))
     .where(and(gte(judgment.createdAt, since), inArray(judgment.level, ["alert", "digest"])));
 
   const recent = await db.select().from(delivery).where(gte(delivery.createdAt, since));

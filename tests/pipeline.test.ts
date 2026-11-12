@@ -93,6 +93,23 @@ describe("pipeline", () => {
     expect((await db.select().from(delivery)).every((d) => d.status === "sent")).toBe(true);
   });
 
+  it("judges the latest 3 posts on the first check as labelled backfill, sent only in the digest", async () => {
+    const slugs = ["p1", "p2", "p3", "p4", "p5"];
+    web.set("https://acme.test/blog", listing(slugs));
+    for (const s of slugs) web.set(`https://acme.test/blog/${s}`, post(s));
+    web.set("https://acme.test/", home("Tagline"));
+    judgeReply.mockResolvedValue(judgment_("alert", "inspects every tool call at runtime"));
+    await runPipeline(db, "test");
+    const posts = await db.select().from(item).where(eq(item.kind, "post"));
+    expect(posts.filter((i) => i.isBackfill).map((i) => i.url.split("/").pop()).sort()).toEqual(["p1", "p2", "p3"]);
+    expect(posts.filter((i) => i.status === "baseline")).toHaveLength(2);
+    expect(judgeReply).toHaveBeenCalledTimes(3);
+    // "alert" from the judge is downgraded: no urgent posts, one digest per interested team.
+    expect(posted.some((p) => p.payload.text.startsWith("Acme:"))).toBe(false);
+    expect(posted.map((p) => p.env).sort()).toEqual(["SLACK_product", "SLACK_rnd"]);
+    expect(JSON.stringify(posted[0]!.payload)).toContain("published before monitoring started");
+  });
+
   it("holds back a judgment whose evidence is not in the source", async () => {
     web.set("https://acme.test/blog", listing(["a"]));
     web.set("https://acme.test/", home("Tagline"));
