@@ -95,7 +95,7 @@ async function checkPage(db: DB, runId: number | undefined, url: string): Promis
     text: "Noma's site changed: suggested updates are waiting for your approval",
     blocks: [
       { type: "section", text: { type: "mrkdwn", text: `:memo: *Noma's site changed. Suggested updates are waiting for your approval.*\n${draft.whatChanged}` } },
-      { type: "context", elements: [{ type: "mrkdwn", text: `${[company && "Company profile", newTopics.length && `${newTopics.length} new topic(s)`, changedTopics.length && `${changedTopics.length} changed topic(s)`].filter(Boolean).join(" · ")} · <${config.publicUrl}/settings#suggestions|Review and approve>` }] },
+      { type: "context", elements: [{ type: "mrkdwn", text: `${[company && "Company profile", newTopics.length && `${newTopics.length} new topic(s)`, changedTopics.length && `${changedTopics.length} changed topic(s)`].filter(Boolean).join(" · ")} · <${config.publicUrl}/settings/suggestions|Review and approve>` }] },
     ],
   });
   return true;
@@ -146,7 +146,7 @@ export async function feedbackNotes(db: DB, now = new Date()): Promise<number> {
       text: `${t.name} marked most items not useful`,
       blocks: [
         { type: "section", text: { type: "mrkdwn", text: `:thinking_face: *${t.name} marked ${bad.length} of ${mine.length} items not useful in the last two weeks.*${reasons ? `\nWhat they said:\n${reasons}` : ""}` } },
-        { type: "context", elements: [{ type: "mrkdwn", text: `Consider sharpening what ${t.name} cares about, or setting it to urgent only. <${config.publicUrl}/settings|Open Settings>` }] },
+        { type: "context", elements: [{ type: "mrkdwn", text: `Consider sharpening what ${t.name} cares about, or setting it to urgent only. <${config.publicUrl}/settings/teams|Open what each team cares about>` }] },
       ],
     });
     if (r === "sent") sent++;

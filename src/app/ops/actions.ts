@@ -11,21 +11,21 @@ import { saveBaseline, startExam } from "@/eval/run";
 export async function runNow() {
   // Runs in the background of the web process; the run record shows progress.
   void runPipeline(db(), "manual").catch((e) => console.error("manual run failed", e));
-  redirect("/ops?msg=" + encodeURIComponent("Run started. Refresh in a minute to see it below."));
+  redirect("/ops/runs?msg=" + encodeURIComponent("Run started. Refresh in a minute to see it below."));
 }
 
 export async function saveCanary(form: FormData) {
   const value = String(form.get("text") ?? "").trim();
   await db().insert(setting).values({ key: "canary", value }).onConflictDoUpdate({ target: setting.key, set: { value, updatedAt: new Date() } });
   revalidatePath("/canary");
-  redirect("/ops?msg=" + encodeURIComponent("Canary page updated. The next run will detect the change."));
+  redirect("/ops/canary?msg=" + encodeURIComponent("Canary page updated. The next run will detect the change."));
 }
 
 export async function saveCanaryPricing(form: FormData) {
   const value = String(form.get("text") ?? "").trim();
   await db().insert(setting).values({ key: "canary-pricing", value }).onConflictDoUpdate({ target: setting.key, set: { value, updatedAt: new Date() } });
   revalidatePath("/canary/pricing");
-  redirect("/ops?msg=" + encodeURIComponent("Pricing canary updated. The next run will compare plans, prices and features."));
+  redirect("/ops/canary?msg=" + encodeURIComponent("Pricing canary updated. The next run will compare plans, prices and features."));
 }
 
 export async function updateSource(form: FormData) {
@@ -36,7 +36,7 @@ export async function updateSource(form: FormData) {
   const linkPrefix = String(form.get("linkPrefix") ?? "").trim() || null;
   const pageType = (form.get("pageType") === "pricing" ? "pricing" : "general") as PageType;
   await db().update(source).set({ fetchMode, active, url, linkPrefix, pageType, consecutiveFailures: 0, lastError: null }).where(eq(source.id, id));
-  revalidatePath("/ops");
+  revalidatePath("/ops", "layout");
 }
 
 export async function addSource(form: FormData) {
@@ -49,24 +49,24 @@ export async function addSource(form: FormData) {
   const label = String(form.get("label") ?? "").trim() || kind;
   const linkPrefix = String(form.get("linkPrefix") ?? "").trim() || null;
   const [c] = await db().select().from(competitor).where(eq(competitor.id, competitorId));
-  if (!c || !/^https?:\/\//.test(url)) redirect("/ops?msg=" + encodeURIComponent("Pick a competitor and a full URL"));
+  if (!c || !/^https?:\/\//.test(url)) redirect("/ops/sources?msg=" + encodeURIComponent("Pick a competitor and a full URL"));
   await db().insert(source).values({ competitorId, kind, url, label, linkPrefix, pageType }).onConflictDoNothing();
-  revalidatePath("/ops");
+  revalidatePath("/ops", "layout");
 }
 
 export async function retryItem(form: FormData) {
   await db().update(item).set({ status: "pending", statusDetail: null }).where(eq(item.id, Number(form.get("id"))));
-  revalidatePath("/ops");
+  revalidatePath("/ops", "layout");
 }
 
 /** Grades the live prompts on the golden set, in the background. About 2 minutes and a few dollars. */
 export async function runExam() {
   const started = await startExam(db());
-  redirect("/ops?msg=" + encodeURIComponent(started ? "Exam started. It takes about 2 minutes; refresh to see the result under Output quality." : "An exam is already running."));
+  redirect("/ops/exam?msg=" + encodeURIComponent(started ? "Exam started. It takes about 2 minutes; refresh to see the result under Output quality." : "An exam is already running."));
 }
 
 export async function saveExamBaseline() {
   await saveBaseline(db());
-  revalidatePath("/ops");
-  redirect("/ops?msg=" + encodeURIComponent("Saved as the baseline. Later exams are compared with it."));
+  revalidatePath("/ops", "layout");
+  redirect("/ops/exam?msg=" + encodeURIComponent("Saved as the baseline. Later exams are compared with it."));
 }

@@ -48,7 +48,7 @@ export async function checkHealth(db: DB, runSummary: string, runProblems: strin
     text: "Competitor monitor needs attention",
     blocks: [
       { type: "section", text: { type: "mrkdwn", text: `:warning: *Competitor monitor needs attention*\n${problems.join("\n")}` } },
-      { type: "context", elements: [{ type: "mrkdwn", text: `${runSummary} · <${config.publicUrl}/ops|Open the Builder area>` }] },
+      { type: "context", elements: [{ type: "mrkdwn", text: `${runSummary} · <${config.publicUrl}/ops/runs|Open the Builder area>` }] },
     ],
   });
   return problems.length;

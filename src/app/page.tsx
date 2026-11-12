@@ -42,17 +42,17 @@ export default async function Feed({ searchParams }: { searchParams: Promise<{ t
 
   return (
     <>
-      <h1>What we found</h1>
+      <h1>Competitor changes</h1>
       <p className="lead">
-        Every new competitor post and page change, with what it means for each team. Teams get the important ones in Slack;
-        everything is listed here so you can check what was and wasn&apos;t sent, and why.
+        New competitor posts and page changes we found, and what each one means for each team. Teams get the important ones
+        in Slack; everything is listed here so you can check what was and wasn&apos;t sent, and why.
       </p>
-      <div className="tabs" style={{ marginBottom: 16 }}>
+      <div className="pills">
         <a href="/?team=all" className={!teamKey ? "on" : ""}>All teams</a>
         {teams.map((t) => (
           <a key={t.key} href={`/?team=${t.key}`} className={teamKey === t.key ? "on" : ""}>{t.name}</a>
         ))}
-        <a href={all ? `/?team=${teamKey ?? "all"}` : `/?all=1&team=${teamKey ?? "all"}`} style={{ float: "right" }}>
+        <a href={all ? `/?team=${teamKey ?? "all"}` : `/?all=1&team=${teamKey ?? "all"}`} className="link">
           {all ? "Hide filtered-out changes" : "Show filtered-out changes too"}
         </a>
       </div>
