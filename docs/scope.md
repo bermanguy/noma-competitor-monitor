@@ -12,6 +12,7 @@ Watch four competitors' blogs and key pages, judge every new post or quiet page 
 | --- | --- |
 | Competitors | Zenity, Pillar Security, Lasso, Straiker ([0001](decisions/0001-competitors-to-monitor.md)); HiddenLayer added live in the demo; one canary page we control |
 | Source kinds | RSS/Atom feed, listing page (blog index), watched page (homepage, platform/product, integrations, changelog where one exists) |
+| Page types | General (text diff and gate) and pricing (plans, monthly and yearly prices and features compared field by field), chosen per page by the owner |
 | Fetching | Plain HTTP by default, headless browser as a per-source fallback |
 | Detection | New post = unseen canonical URL. Page change = extracted main text differs after normalisation. First crawl is a silent baseline, except the latest 3 posts per competitor, judged and labelled as published before monitoring |
 | Judgment | One structured judgment per item per team: relevance level, reason, verbatim evidence quote, matched topics. Quotes are checked against the source text |
@@ -30,4 +31,4 @@ Social media, press wires, review sites, job postings. Cross-source deduplicatio
 ## Change log
 
 - 2026-11-12: frozen.
-- 2026-11-12: database on Render Postgres instead of Neon (one provider, one bill). Watched pages per competitor widened beyond the homepage. First check judges the latest 3 posts per competitor, labelled, digest only. The four confirm-first choices confirmed.
+- 2026-11-12: database on Render Postgres instead of Neon (one provider, one bill). Watched pages per competitor widened beyond the homepage. First check judges the latest 3 posts per competitor, labelled, digest only. The four confirm-first choices confirmed. Pricing page type added, demoed on a pricing canary because none of the four competitors publishes prices.
