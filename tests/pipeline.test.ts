@@ -22,6 +22,11 @@ vi.mock("../src/pipeline/judge", async (orig) => ({
   judgeItem: (...a: unknown[]) => judgeReply(...a),
   gateChange: (...a: unknown[]) => gateReply(...a),
 }));
+const pricingReply = vi.fn();
+vi.mock("../src/pipeline/pricing", async (orig) => ({
+  ...(await orig<typeof import("../src/pipeline/pricing")>()),
+  extractPricing: (...a: unknown[]) => pricingReply(...a),
+}));
 const posted: { env: string; payload: { text: string } }[] = [];
 vi.mock("../src/pipeline/slack", async (orig) => ({
   ...(await orig<typeof import("../src/pipeline/slack")>()),
@@ -38,7 +43,7 @@ const home = (tagline: string) => `<html><body><main><h1>${tagline}</h1>${para("
 let db: DB;
 beforeEach(async () => {
   db = await testDb();
-  web.clear(); posted.length = 0; judgeReply.mockReset(); gateReply.mockReset();
+  web.clear(); posted.length = 0; judgeReply.mockReset(); gateReply.mockReset(); pricingReply.mockReset();
   for (const [key, name] of [["marketing", "Marketing"], ["product", "Product"], ["rnd", "R&D"]] as const) {
     await db.insert(team).values({ key, name, lens: `${name} lens`, slackWebhookEnv: `SLACK_${key}` });
   }
@@ -133,6 +138,57 @@ describe("pipeline", () => {
     const [change] = await db.select().from(item).where(eq(item.kind, "page_change"));
     expect(change?.status).toBe("cosmetic");
     expect(judgeReply).not.toHaveBeenCalled();
+  });
+
+  it("pricing pages: compares plans field by field, judges real changes, logs wording-only changes", async () => {
+    const [c] = await db.select().from(competitor);
+    await db.insert(source).values({ competitorId: c!.id, kind: "page", url: "https://acme.test/pricing", label: "Pricing", pageType: "pricing" });
+    const pricingPage = (team: string, extra = "") =>
+      `<html><body><main><h1>Pricing</h1>${para("Simple plans for every security team.")}<h2>Starter</h2><p>$29 per user / month</p><h2>Team</h2><p>${team} per user / month</p><p>${extra}</p></main></body></html>`;
+    const reading = (team: string) => ({ hasPricing: true, plans: [
+      { name: "Starter", prices: [{ billing: "monthly", amount: "$29", unit: "per user / month" }], features: [] },
+      { name: "Team", prices: [{ billing: "monthly", amount: team, unit: "per user / month" }], features: [] },
+    ] });
+    web.set("https://acme.test/blog", listing(["a"]));
+    web.set("https://acme.test/", home("Tagline"));
+    web.set("https://acme.test/pricing", pricingPage("$79"));
+    pricingReply.mockResolvedValue(reading("$79"));
+    await runPipeline(db, "test");
+    expect(await db.select().from(item).where(eq(item.kind, "page_change"))).toHaveLength(0);
+
+    // Unchanged text: the page is not read again.
+    await runPipeline(db, "test");
+    expect(pricingReply).toHaveBeenCalledTimes(1);
+
+    // A three-character price change is reported and judged, with no gate call.
+    web.set("https://acme.test/pricing", pricingPage("$89"));
+    pricingReply.mockResolvedValue(reading("$89"));
+    judgeReply.mockResolvedValue(judgment_("alert", "$89 per user / month"));
+    await runPipeline(db, "test");
+    const [change] = await db.select().from(item).where(eq(item.kind, "page_change"));
+    expect(change?.diff).toBe("Team (monthly): $79 per user / month → $89 per user / month");
+    expect(change?.status).toBe("judged");
+    expect(gateReply).not.toHaveBeenCalled();
+    expect(String(judgeReply.mock.calls[0]?.[2]?.pageType)).toBe("pricing");
+
+    // Wording changes but plans and prices don't: logged as cosmetic, not judged.
+    web.set("https://acme.test/pricing", pricingPage("$89", "All prices exclude VAT and are shown in US dollars."));
+    await runPipeline(db, "test");
+    const changes = await db.select().from(item).where(eq(item.kind, "page_change"));
+    expect(changes.map((x) => x.status).sort()).toEqual(["cosmetic", "judged"]);
+    expect(judgeReply).toHaveBeenCalledTimes(1);
+  });
+
+  it("pricing pages: a reading with a price not on the page fails the source and stores nothing", async () => {
+    const [c] = await db.select().from(competitor);
+    await db.insert(source).values({ competitorId: c!.id, kind: "page", url: "https://acme.test/pricing", label: "Pricing", pageType: "pricing" });
+    web.set("https://acme.test/blog", listing(["a"]));
+    web.set("https://acme.test/", home("Tagline"));
+    web.set("https://acme.test/pricing", `<html><body><main><h1>Pricing</h1>${para("Starter costs $29 per user per month for small teams.")}</main></body></html>`);
+    pricingReply.mockResolvedValue({ hasPricing: true, plans: [{ name: "Starter", prices: [{ billing: "monthly", amount: "$19", unit: "" }], features: [] }] });
+    await runPipeline(db, "test");
+    const [s] = await db.select().from(source).where(eq(source.url, "https://acme.test/pricing"));
+    expect(s?.lastError).toMatch(/not verified/);
   });
 
   it("records a failing source without stopping the run", async () => {

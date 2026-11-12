@@ -28,3 +28,11 @@ button.secondary { background:#fff; color: var(--accent); }
 @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
 pre.diff { white-space: pre-wrap; font-size:12px; background:#f6f8fa; padding:8px; border-radius:6px; max-height: 240px; overflow:auto; }
 .notice { background:#eef3ff; border:1px solid #c9d7ff; padding:10px 14px; border-radius:8px; margin-bottom:16px; }
+
+/* Pricing canary: both prices are in the page; the toggle only changes which one is shown. */
+.canary-pricing .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+.canary-pricing .plan { border: 1px solid #e3e3e8; border-radius: 10px; padding: 12px 16px; }
+.canary-pricing .plan p[class^="price"] { font-weight: 600; }
+.canary-pricing label { margin-right: 12px; }
+.canary-pricing #bill-monthly:checked ~ .plans .price-yearly,
+.canary-pricing #bill-yearly:checked ~ .plans .price-monthly { display: none; }

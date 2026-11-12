@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db/client";
-import { competitor, source, team, topic, type NoiseLevel } from "@/db/schema";
+import { competitor, source, team, topic, type NoiseLevel, type PageType } from "@/db/schema";
 import { discoverSources } from "@/pipeline/discover";
 
 export async function addCompetitor(form: FormData) {
@@ -26,6 +26,19 @@ export async function addCompetitor(form: FormData) {
   const msg = `${name} added. Watching: ${summary || "nothing yet"}. ${found.notes.join(" ")} The first check runs within 3 hours; what's already published is recorded as history, and only new posts and changes are reported.`;
   revalidatePath("/settings");
   redirect("/settings?added=" + encodeURIComponent(msg));
+}
+
+/** The owner adds one page to watch, and picks which skill reads it. */
+export async function addWatchedPage(form: FormData) {
+  const competitorId = Number(form.get("competitorId"));
+  const url = String(form.get("url") ?? "").trim();
+  const pageType = (form.get("pageType") === "pricing" ? "pricing" : "general") as PageType;
+  const label = String(form.get("label") ?? "").trim() || (pageType === "pricing" ? "Pricing" : "Page");
+  const [c] = await db().select().from(competitor).where(eq(competitor.id, competitorId));
+  if (!c || !/^https?:\/\//.test(url)) redirect("/settings?error=" + encodeURIComponent("Pick a competitor and paste the full page address, starting with https://"));
+  await db().insert(source).values({ competitorId, kind: "page", url, label, pageType }).onConflictDoNothing();
+  revalidatePath("/settings");
+  redirect("/settings?added=" + encodeURIComponent(`Watching ${c.name} · ${label} as a ${pageType === "pricing" ? "pricing page (plans, prices and features compared one by one)" : "general page"}. The first check records it as it is today.`));
 }
 
 export async function setCompetitorActive(form: FormData) {
