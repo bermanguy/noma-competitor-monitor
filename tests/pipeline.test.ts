@@ -219,4 +219,14 @@ describe("pipeline", () => {
     expect(JSON.stringify(ops[0]!.payload)).toContain("Slack deliveries failed");
     vi.mocked(postToSlack).mockImplementation(async (env: string, payload: unknown) => { posted.push({ env, payload: payload as { text: string } }); });
   });
+
+  it("titles a listing post with the post's own title, not the run-together link text", async () => {
+    web.set("https://acme.test/blog", `<html><body><a href="/blog/gatekeeper">Jane DoeLaunching GatekeeperOur new gateway...Product News</a><a href="/blog/gatekeeper">Read</a></body></html>`);
+    web.set("https://acme.test/", home("The AI security platform"));
+    web.set("https://acme.test/blog/gatekeeper", `<html><head><title>Launching Gatekeeper</title></head><body><article><h1>Launching Gatekeeper</h1>${para("Acme launched an MCP gateway called Gatekeeper that inspects every tool call at runtime.")}</article></body></html>`);
+    judgeReply.mockResolvedValue(judgment_("digest", "inspects every tool call at runtime"));
+    await runPipeline(db, "test");
+    const [p] = await db.select().from(item).where(eq(item.kind, "post"));
+    expect(p!.title).toBe("Launching Gatekeeper");
+  });
 });
