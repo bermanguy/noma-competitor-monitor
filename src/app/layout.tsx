@@ -1,19 +1,21 @@
 import "./globals.css";
 import type { ReactNode } from "react";
+import { ViewAsBar } from "@/components/ViewAsBar";
+import { currentViewer } from "@/lib/viewer";
 
 export const metadata = { title: "Competitor monitor" };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const viewer = await currentViewer();
   return (
     <html lang="en">
       <body>
+        <ViewAsBar current={viewer.key} />
         <header className="top">
           <strong>Competitor monitor</strong>
-          <span className="muted">Owner:</span>
           <a href="/">What we found</a>
           <a href="/settings">Competitors and topics</a>
-          <span className="muted" style={{ marginLeft: "auto" }}>Builder:</span>
-          <a href="/ops">Operator</a>
+          {viewer.role === "builder" && <a href="/ops" style={{ marginLeft: "auto" }}>Builder area</a>}
         </header>
         <main>{children}</main>
       </body>

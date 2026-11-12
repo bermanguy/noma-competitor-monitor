@@ -4,6 +4,8 @@ import { competitor, ownerSuggestion, source, team, topic } from "@/db/schema";
 import { sourceHealth } from "@/pipeline/health";
 import { addCompetitor, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, updateTeam, updateTopic } from "./actions";
 import { toReview } from "@/eval/owner-golden";
+import { currentViewer } from "@/lib/viewer";
+import { canEditTeam } from "@/lib/view-as";
 import { getOwnerTexts, OWNER_TEXTS, ownerTextHistoryFor, type OwnerTextKey } from "@/lib/owner-text";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +21,11 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const topics = await d.select().from(topic).where(eq(topic.active, true)).orderBy(topic.id);
   const ownerTexts = await getOwnerTexts(d);
   const history = Object.fromEntries(await Promise.all((Object.keys(OWNER_TEXTS) as OwnerTextKey[]).map(async (k) => [k, await ownerTextHistoryFor(d, k)] as const)));
-  const review = await toReview(d);
+  const viewer = await currentViewer();
+  // An owner reviews only the votes of their own team; the builder sees all of them.
+  const review = (await toReview(d))
+    .map((r) => ({ ...r, votes: r.votes.filter((v) => canEditTeam(viewer, v.team)) }))
+    .filter((r) => r.votes.length > 0);
   const pending = await d.select().from(ownerSuggestion).where(eq(ownerSuggestion.status, "pending")).orderBy(desc(ownerSuggestion.id));
 
   return (
@@ -205,7 +211,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       <h2>What each team cares about</h2>
       <p className="muted">This is the instruction the system follows when it decides what matters to each team. Write it the way you would brief a new analyst.</p>
       <div className="grid2">
-        {teams.map((t) => (
+        {[...teams].sort((a, b) => Number(canEditTeam(viewer, b.key)) - Number(canEditTeam(viewer, a.key))).map((t) => canEditTeam(viewer, t.key) ? (
           <form key={t.key} action={updateTeam} className="card">
             <input type="hidden" name="key" value={t.key} />
             <div className="row"><strong>{t.name}</strong>
@@ -217,6 +223,11 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             <textarea name="lens" defaultValue={t.lens} style={{ marginTop: 8, minHeight: 150 }} />
             <button style={{ marginTop: 8 }}>Save</button>
           </form>
+        ) : (
+          <div key={t.key} className="card" style={{ opacity: 0.75 }}>
+            <div className="row"><strong>{t.name}</strong><span className="muted" style={{ marginLeft: "auto" }}>Owned by another team&apos;s owner</span></div>
+            <p style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{t.lens}</p>
+          </div>
         ))}
       </div>
     </>

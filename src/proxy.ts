@@ -1,23 +1,32 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { VIEW_AS_COOKIE, isBuilderPath, viewerFor } from "@/lib/view-as";
 
 /**
  * Two surfaces, two passwords. The owner password opens the owner surface (feed, settings); the
- * operator password opens everything. Both use one sign-in realm, so whoever signs in once can move
+ * builder password (OPS_PASSWORD) opens everything. Which role the pages show is picked with "View as". Both use one sign-in realm, so whoever signs in once can move
  * between the pages without being asked again. The canary page, feedback links and the health check are public.
  */
 export function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const ops = path.startsWith("/ops");
   const allowed = ops ? [process.env.OPS_PASSWORD] : [process.env.OWNER_PASSWORD, process.env.OPS_PASSWORD];
-  if (allowed.every((p) => !p)) return NextResponse.next(); // local development without passwords
+  if (allowed.every((p) => !p)) return viewAs(req); // local development without passwords
   const header = req.headers.get("authorization") ?? "";
   const [, encoded] = header.split(" ");
   const pass = encoded ? atob(encoded).split(":").slice(1).join(":") : "";
-  if (pass && allowed.includes(pass)) return NextResponse.next();
+  if (pass && allowed.includes(pass)) return viewAs(req);
   return new NextResponse("Sign in required", {
     status: 401,
     headers: { "WWW-Authenticate": 'Basic realm="Competitor monitor"' },
   });
+}
+
+/** The builder area is shown only when viewing as the builder; opening it switches the view to the builder. */
+function viewAs(req: NextRequest) {
+  if (isBuilderPath(req.nextUrl.pathname) && viewerFor(req.cookies.get(VIEW_AS_COOKIE)?.value).role !== "builder") {
+    return NextResponse.redirect(new URL(`/view-as?as=builder&next=${encodeURIComponent(req.nextUrl.pathname)}`, req.url));
+  }
+  return NextResponse.next();
 }
 
 export const config = {
