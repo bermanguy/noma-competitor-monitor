@@ -12,14 +12,15 @@ import { addToExam } from "@/eval/owner-golden";
 import type { Level } from "@/db/schema";
 import { currentViewer } from "@/lib/viewer";
 import { canEditTeam } from "@/lib/view-as";
+import { ownerTextPath } from "@/lib/nav";
 
 export async function addCompetitor(form: FormData) {
   const name = String(form.get("name") ?? "").trim();
   const domain = String(form.get("domain") ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
-  if (!name || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) redirect("/settings?error=" + encodeURIComponent("Enter a name and a website like example.com"));
+  if (!name || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) redirect("/settings/competitors?error=" + encodeURIComponent("Enter a name and a website like example.com"));
   const d = db();
   const [existing] = await d.select().from(competitor).where(eq(competitor.domain, domain));
-  if (existing) redirect("/settings?error=" + encodeURIComponent(`${existing.name} is already watched`));
+  if (existing) redirect("/settings/competitors?error=" + encodeURIComponent(`${existing.name} is already watched`));
 
   const found = await discoverSources(domain);
   const [c] = await d.insert(competitor).values({ name, domain }).returning();
@@ -30,8 +31,8 @@ export async function addCompetitor(form: FormData) {
     .map((s) => `${s.label}${s.sample.length ? ` (latest: ${s.sample.slice(0, 3).join("; ")})` : ""}`)
     .join(" · ");
   const msg = `${name} added. Watching: ${summary || "nothing yet"}. ${found.notes.join(" ")} The first check runs within 3 hours; what's already published is recorded as history, and only new posts and changes are reported.`;
-  revalidatePath("/settings");
-  redirect("/settings?added=" + encodeURIComponent(msg));
+  revalidatePath("/settings", "layout");
+  redirect("/settings/competitors?added=" + encodeURIComponent(msg));
 }
 
 /** The owner adds one page to watch, and picks which skill reads it. */
@@ -41,64 +42,64 @@ export async function addWatchedPage(form: FormData) {
   const pageType = (form.get("pageType") === "pricing" ? "pricing" : "general") as PageType;
   const label = String(form.get("label") ?? "").trim() || (pageType === "pricing" ? "Pricing" : "Page");
   const [c] = await db().select().from(competitor).where(eq(competitor.id, competitorId));
-  if (!c || !/^https?:\/\//.test(url)) redirect("/settings?error=" + encodeURIComponent("Pick a competitor and paste the full page address, starting with https://"));
+  if (!c || !/^https?:\/\//.test(url)) redirect("/settings/competitors?error=" + encodeURIComponent("Pick a competitor and paste the full page address, starting with https://"));
   await db().insert(source).values({ competitorId, kind: "page", url, label, pageType }).onConflictDoNothing();
-  revalidatePath("/settings");
-  redirect("/settings?added=" + encodeURIComponent(`Watching ${c.name} · ${label} as a ${pageType === "pricing" ? "pricing page (plans, prices and features compared one by one)" : "general page"}. The first check records it as it is today.`));
+  revalidatePath("/settings", "layout");
+  redirect("/settings/competitors?added=" + encodeURIComponent(`Watching ${c.name} · ${label} as a ${pageType === "pricing" ? "pricing page (plans, prices and features compared one by one)" : "general page"}. The first check records it as it is today.`));
 }
 
 export async function setCompetitorActive(form: FormData) {
   await db().update(competitor).set({ active: form.get("active") === "1" }).where(eq(competitor.id, Number(form.get("id"))));
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 }
 
 export async function addTopic(form: FormData) {
   const name = String(form.get("name") ?? "").trim();
   const description = String(form.get("description") ?? "").trim();
   const teamKeys = form.getAll("teams").map(String);
-  if (!name || teamKeys.length === 0) redirect("/settings?error=" + encodeURIComponent("A topic needs a name and at least one team"));
+  if (!name || teamKeys.length === 0) redirect("/settings/topics?error=" + encodeURIComponent("A topic needs a name and at least one team"));
   await db().insert(topic).values({ name, description: description || name, teamKeys });
-  revalidatePath("/settings");
-  redirect("/settings?added=" + encodeURIComponent(`Topic "${name}" added. It is used from the next check onward.`));
+  revalidatePath("/settings", "layout");
+  redirect("/settings/topics?added=" + encodeURIComponent(`Topic "${name}" added. It is used from the next check onward.`));
 }
 
 export async function updateTopic(form: FormData) {
   const name = String(form.get("name") ?? "").trim();
   const description = String(form.get("description") ?? "").trim();
   const teamKeys = form.getAll("teams").map(String);
-  if (!name || teamKeys.length === 0) redirect("/settings?error=" + encodeURIComponent("A topic needs a name and at least one team"));
+  if (!name || teamKeys.length === 0) redirect("/settings/topics?error=" + encodeURIComponent("A topic needs a name and at least one team"));
   await db().update(topic).set({ name, description: description || name, teamKeys }).where(eq(topic.id, Number(form.get("id"))));
-  revalidatePath("/settings");
-  redirect("/settings?added=" + encodeURIComponent(`Topic "${name}" saved. It is used from the next check onward.`));
+  revalidatePath("/settings", "layout");
+  redirect("/settings/topics?added=" + encodeURIComponent(`Topic "${name}" saved. It is used from the next check onward.`));
 }
 
 /** What Noma sells, the level definitions, page-type guidance: owner text used in every judgment. */
 export async function saveOwnerText(form: FormData) {
   const key = String(form.get("key")) as OwnerTextKey;
   const value = String(form.get("text") ?? "").trim();
-  if (!(key in OWNER_TEXTS)) redirect("/settings?error=" + encodeURIComponent("Unknown setting"));
-  if (value.length < 40) redirect("/settings?error=" + encodeURIComponent("Write at least a sentence or two"));
+  if (!(key in OWNER_TEXTS)) redirect(ownerTextPath(key) + "?error=" + encodeURIComponent("Unknown setting"));
+  if (value.length < 40) redirect(ownerTextPath(key) + "?error=" + encodeURIComponent("Write at least a sentence or two"));
   if (key === "levels" && !["alert:", "digest:", "log:", "none:"].every((l) => value.includes(l))) {
-    redirect("/settings?error=" + encodeURIComponent("Keep one line for each level: alert:, digest:, log: and none:"));
+    redirect(ownerTextPath(key) + "?error=" + encodeURIComponent("Keep one line for each level: alert:, digest:, log: and none:"));
   }
   await setOwnerText(db(), key, value);
-  revalidatePath("/settings");
-  redirect("/settings?added=" + encodeURIComponent(`${OWNER_TEXTS[key].title} saved. Changes apply from the next check.`));
+  revalidatePath("/settings", "layout");
+  redirect(ownerTextPath(key) + "?added=" + encodeURIComponent(`${OWNER_TEXTS[key].title} saved. Changes apply from the next check.`));
 }
 
 export async function removeTopic(form: FormData) {
   await db().update(topic).set({ active: false }).where(eq(topic.id, Number(form.get("id"))));
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 }
 
 export async function updateTeam(form: FormData) {
   const lens = String(form.get("lens") ?? "").trim();
   const noise = (form.get("noise") === "quiet" ? "quiet" : "normal") as NoiseLevel;
-  if (!canEditTeam(await currentViewer(), String(form.get("key")))) redirect("/settings?error=" + encodeURIComponent("Only that team's owner (or the builder) can change its description"));
-  if (lens.length < 40) redirect("/settings?error=" + encodeURIComponent("Describe what the team cares about in at least a sentence or two"));
+  if (!canEditTeam(await currentViewer(), String(form.get("key")))) redirect("/settings/teams?error=" + encodeURIComponent("Only that team's owner (or the builder) can change its description"));
+  if (lens.length < 40) redirect("/settings/teams?error=" + encodeURIComponent("Describe what the team cares about in at least a sentence or two"));
   await db().update(team).set({ lens, noise }).where(eq(team.key, String(form.get("key"))));
-  revalidatePath("/settings");
-  redirect("/settings?added=" + encodeURIComponent("Saved. Changes apply from the next check."));
+  revalidatePath("/settings", "layout");
+  redirect("/settings/teams?added=" + encodeURIComponent("Saved. Changes apply from the next check."));
 }
 
 /** The owner approves a suggestion from Noma's site, after editing the profile text and ticking the topic changes they want. */
@@ -107,20 +108,20 @@ export async function approveSuggestion(form: FormData) {
     company: form.get("useCompany") === "1" ? String(form.get("company") ?? "") : null,
     topicNames: form.getAll("topics").map(String),
   });
-  revalidatePath("/settings");
-  redirect("/settings?" + (ok ? "added=" + encodeURIComponent("Approved. The updates apply from the next check, and the earlier version is kept under Earlier versions.") : "error=" + encodeURIComponent("That suggestion was already handled")));
+  revalidatePath("/settings", "layout");
+  redirect("/settings/suggestions?" + (ok ? "added=" + encodeURIComponent("Approved. The updates apply from the next check, and the earlier version is kept under Earlier versions.") : "error=" + encodeURIComponent("That suggestion was already handled")));
 }
 
 export async function dismissSuggestionAction(form: FormData) {
   await dismissSuggestion(db(), Number(form.get("id")));
-  revalidatePath("/settings");
-  redirect("/settings?added=" + encodeURIComponent("Dismissed. Nothing was changed."));
+  revalidatePath("/settings", "layout");
+  redirect("/settings/suggestions?added=" + encodeURIComponent("Dismissed. Nothing was changed."));
 }
 
 export async function restoreOwnerTextAction(form: FormData) {
   const k = await restoreOwnerText(db(), Number(form.get("id")));
-  revalidatePath("/settings");
-  redirect("/settings?" + (k ? "added=" + encodeURIComponent(`${OWNER_TEXTS[k].title}: earlier version restored. The version it replaced is kept too.`) : "error=" + encodeURIComponent("That version no longer exists")));
+  revalidatePath("/settings", "layout");
+  redirect(ownerTextPath(k) + "?" + (k ? "added=" + encodeURIComponent(`${OWNER_TEXTS[k].title}: earlier version restored. The version it replaced is kept too.`) : "error=" + encodeURIComponent("That version no longer exists")));
 }
 
 const LEVELS = ["alert", "digest", "log", "none"] as const;
@@ -133,8 +134,8 @@ export async function addToExamAction(form: FormData) {
     if (k.startsWith("level:") && (LEVELS as readonly string[]).includes(String(v))) expected[k.slice(6)] = v as Level;
   }
   const g = await addToExam(db(), itemId, expected, String(form.get("note") ?? ""));
-  revalidatePath("/settings");
-  redirect("/settings?" + (g
+  revalidatePath("/settings", "layout");
+  redirect("/settings/review?" + (g
     ? "added=" + encodeURIComponent(`Saved to the exam. From the next exam on, the judge is checked against your answer for "${g.title ?? g.url}".`)
     : "error=" + encodeURIComponent("That item could not be added")) + "#review");
 }
