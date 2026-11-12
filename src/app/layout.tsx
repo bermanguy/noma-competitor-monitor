@@ -9,9 +9,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <header className="top">
           <strong>Competitor monitor</strong>
+          <span className="muted">Owner:</span>
           <a href="/">What we found</a>
           <a href="/settings">Competitors and topics</a>
-          <a href="/ops" style={{ marginLeft: "auto" }}>Operator</a>
+          <span className="muted" style={{ marginLeft: "auto" }}>Builder:</span>
+          <a href="/ops">Operator</a>
         </header>
         <main>{children}</main>
       </body>
