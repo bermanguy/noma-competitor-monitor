@@ -18,7 +18,8 @@ interface SeedSource { kind: SourceKind; url: string; label: string; linkPrefix?
  * Decision 0001. URLs checked against each site's navigation on 2026-11-12.
  * Post sources: the blog, plus own press releases or research where they live outside the blog.
  * Watched pages: homepage (positioning), platform overview (capabilities), partners (ecosystem).
- * None of the four publishes pricing; a pricing page is added on the operator page if one appears.
+ * None of the four has a pricing page on its own site (AWS Marketplace list prices are not watched, see decision 0013);
+ * a pricing page is added on the operator page if one appears.
  */
 export const COMPETITORS: { name: string; domain: string; sources: SeedSource[] }[] = [
   { name: "Zenity", domain: "zenity.io", sources: [
