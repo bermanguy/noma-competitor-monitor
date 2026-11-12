@@ -132,8 +132,20 @@ flowchart LR
 
 - **Before launch:** the golden set starts with authored cases the live feed rarely produces (a cosmetic edit, a category-language tagline, a price change, an injected instruction, a vague "may explore" claim). After the first live run, `npm run golden:export -- --latest 20` copies real judged items into `evals/golden/` without the model's answer, so the labeller is not anchored on it. Labels start as `draft` and become `owner` once the product owner confirms them.
 - **How it is graded:** "sent" means `alert` or `digest`. Per team: precision (of what we send, how much the team should get), recall (of what it should get, how much we send), exact level, severe misses (a missed alert, or an alert on something irrelevant), and evidence failures. A sent judgment without verbatim evidence counts as not sent, as in production. `npm run eval -- --save-baseline` records the bar; later runs exit with an error when a team's precision drops.
-- **On every change** to prompts, lenses, levels or models, CI runs the eval and the PR shows the per-team numbers before and after.
+- **On every change** to prompts, lenses, levels or models, the operator runs the exam ("Run the exam" on `/ops`, on the server where the API key lives, against the live prompts) and compares it with the saved baseline. `npm run eval` does the same from a laptop.
+- **Who labels:** each area head owns their team's column of the answer key, because they know best what their team needs. In this build the product owner labels all three as a stand-in.
 - **After launch:** each Slack item carries a feedback link. A "not useful" vote asks why. Rated items are added to the prompt as recent per-team examples and can be promoted into the golden set by the operator.
+- **When a score drops, find the cause before changing anything (error analysis).** Read each disagreement with the judge's reason, which `/ops` and the report show, and put it in one bucket:
+
+  | Cause | Example | Fix | Owner |
+  | --- | --- | --- | --- |
+  | The answer key is wrong or ambiguous | Two people would label it differently | Fix the label or the level definitions | Area head |
+  | The team lens is vague | Marketing gets purely technical posts | Edit the lens in Settings | Area head |
+  | Missing context | The judge doesn't know Noma already has X | Edit the company profile or topics | Owner |
+  | The judge broke a rule | Treated "plans to" as "launched" | Change the scaffold prompt or try a stronger model | Builder |
+  | Bad input | Text cut off, wrong title, page not rendered | Fix collection or extraction | Builder |
+
+  Fix the largest bucket first, change one thing at a time, rerun the exam, check that no other team got worse, and save the new baseline. Low precision means noise: tighten the lens or the levels. Low recall means misses: broaden them.
 - **Honest limit:** the first golden set is our own judgment of what the teams want. Real team feedback replaces it within weeks, and the design makes that the default path.
 
 ## Running unattended

@@ -1,7 +1,11 @@
 import type { Level } from "./golden";
 
 /** One graded answer: what one team should have got for one item, and what the judge gave. */
-export interface Outcome { id: string; team: string; expected: Level; got: Level; evidenceOk: boolean }
+export interface Outcome {
+  id: string; team: string; expected: Level; got: Level; evidenceOk: boolean;
+  /** The judge's reason for this team, so a disagreement can be traced to its cause. */
+  why?: string;
+}
 
 /** "Sent" means it reaches the team: alert now, or digest in the daily digest. */
 export const isSent = (l: Level) => l === "alert" || l === "digest";
@@ -86,8 +90,8 @@ export function formatReport(args: {
     "## Disagreements",
     "",
     misses.length
-      ? ["| Item | Team | Expected | Got |", "| --- | --- | --- | --- |",
-         ...misses.map((o) => `| ${o.id} | ${o.team} | ${o.expected} | ${o.got}${o.evidenceOk ? "" : " (no evidence)"} |`)].join("\n")
+      ? ["| Item | Team | Expected | Got | Judge's reason |", "| --- | --- | --- | --- | --- |",
+         ...misses.map((o) => `| ${o.id} | ${o.team} | ${o.expected} | ${o.got}${o.evidenceOk ? "" : " (no evidence)"} | ${(o.why ?? "").replace(/\|/g, "/")} |`)].join("\n")
       : "None.",
     "",
   ].join("\n");
