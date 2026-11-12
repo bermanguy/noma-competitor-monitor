@@ -45,7 +45,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           {review.map((r) => (
             <form key={r.itemId} action={addToExamAction} className="card">
               <input type="hidden" name="itemId" value={r.itemId} />
-              <div className="muted">{r.competitor}</div>
+              <div className="muted">{r.competitor}{r.isTest && <span className="chip lv-log" style={{ marginLeft: 8 }}>test page</span>}</div>
               <strong><a href={r.url} target="_blank" rel="noreferrer">{r.title}</a></strong>
               {r.votes.map((v, n) => (
                 <div key={n} className="team">
