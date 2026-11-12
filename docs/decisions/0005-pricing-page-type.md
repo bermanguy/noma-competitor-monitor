@@ -8,7 +8,7 @@
 
 Watched pages are compared as normalised text, and a change must be at least 40 characters before the model looks at it. On a pricing page that rule is wrong: "$29" becoming "$34" is three characters and the most important change on the page. Guy asked for a page type that understands plans, monthly and yearly prices, and features.
 
-None of the four competitors publishes a pricing page today.
+None of the four competitors has a pricing page on its own site. Some show list prices on AWS Marketplace; [0013](0013-skip-marketplace-pricing.md) explains why those are not watched.
 
 ## Decision
 
