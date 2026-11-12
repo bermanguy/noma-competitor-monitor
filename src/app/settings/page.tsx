@@ -2,7 +2,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { competitor, source, team, topic } from "@/db/schema";
 import { sourceHealth } from "@/pipeline/health";
-import { addCompetitor, addTopic, addWatchedPage, removeTopic, setCompetitorActive, updateTeam } from "./actions";
+import { addCompetitor, addTopic, addWatchedPage, removeTopic, saveOwnerText, setCompetitorActive, updateTeam, updateTopic } from "./actions";
+import { getOwnerTexts, OWNER_TEXTS, type OwnerTextKey } from "@/lib/owner-text";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const srcs = await d.select().from(source).where(eq(source.active, true));
   const teams = await d.select().from(team).orderBy(team.id);
   const topics = await d.select().from(topic).where(eq(topic.active, true)).orderBy(topic.id);
+  const ownerTexts = await getOwnerTexts(d);
 
   return (
     <>
@@ -75,7 +77,20 @@ export default async function Settings({ searchParams }: { searchParams: Promise
         <tbody>
           {topics.map((t) => (
             <tr key={t.id}>
-              <td><strong>{t.name}</strong><div className="muted">{t.description}</div></td>
+              <td>
+                <details>
+                  <summary><strong>{t.name}</strong><div className="muted">{t.description}</div></summary>
+                  <form action={updateTopic} style={{ display: "grid", gap: 6, marginTop: 8 }}>
+                    <input type="hidden" name="id" value={t.id} />
+                    <input type="text" name="name" defaultValue={t.name} required />
+                    <input type="text" name="description" defaultValue={t.description} />
+                    <div className="row">
+                      {teams.map((x) => <label key={x.key}><input type="checkbox" name="teams" value={x.key} defaultChecked={t.teamKeys.includes(x.key)} /> {x.name}</label>)}
+                      <button className="secondary" style={{ marginLeft: "auto" }}>Save topic</button>
+                    </div>
+                  </form>
+                </details>
+              </td>
               <td>{t.teamKeys.map((k) => teams.find((x) => x.key === k)?.name ?? k).join(", ")}</td>
               <td><form action={removeTopic}><input type="hidden" name="id" value={t.id} /><button className="secondary">Remove</button></form></td>
             </tr>
@@ -94,6 +109,20 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             <button style={{ marginLeft: "auto" }}>Add topic</button>
           </div>
         </form>
+      </div>
+
+      <h2>What Noma sells and what the levels mean</h2>
+      <p className="muted">Used in every judgment. Keep these current when Noma's products or priorities change.</p>
+      <div className="grid2">
+        {(Object.keys(OWNER_TEXTS) as OwnerTextKey[]).map((k) => (
+          <form key={k} action={saveOwnerText} className="card">
+            <input type="hidden" name="key" value={k} />
+            <strong>{OWNER_TEXTS[k].title}</strong>
+            <div className="muted">{OWNER_TEXTS[k].help}</div>
+            <textarea name="text" defaultValue={ownerTexts[k]} style={{ marginTop: 8, minHeight: 150 }} />
+            <button style={{ marginTop: 8 }}>Save</button>
+          </form>
+        ))}
       </div>
 
       <h2>What each team cares about</h2>

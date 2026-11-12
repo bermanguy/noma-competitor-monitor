@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { competitor, source, team, topic, type NoiseLevel, type PageType } from "@/db/schema";
 import { discoverSources } from "@/pipeline/discover";
+import { OWNER_TEXTS, setOwnerText, type OwnerTextKey } from "@/lib/owner-text";
 
 export async function addCompetitor(form: FormData) {
   const name = String(form.get("name") ?? "").trim();
@@ -54,6 +55,30 @@ export async function addTopic(form: FormData) {
   await db().insert(topic).values({ name, description: description || name, teamKeys });
   revalidatePath("/settings");
   redirect("/settings?added=" + encodeURIComponent(`Topic "${name}" added. It is used from the next check onward.`));
+}
+
+export async function updateTopic(form: FormData) {
+  const name = String(form.get("name") ?? "").trim();
+  const description = String(form.get("description") ?? "").trim();
+  const teamKeys = form.getAll("teams").map(String);
+  if (!name || teamKeys.length === 0) redirect("/settings?error=" + encodeURIComponent("A topic needs a name and at least one team"));
+  await db().update(topic).set({ name, description: description || name, teamKeys }).where(eq(topic.id, Number(form.get("id"))));
+  revalidatePath("/settings");
+  redirect("/settings?added=" + encodeURIComponent(`Topic "${name}" saved. It is used from the next check onward.`));
+}
+
+/** What Noma sells, the level definitions, page-type guidance: owner text used in every judgment. */
+export async function saveOwnerText(form: FormData) {
+  const key = String(form.get("key")) as OwnerTextKey;
+  const value = String(form.get("text") ?? "").trim();
+  if (!(key in OWNER_TEXTS)) redirect("/settings?error=" + encodeURIComponent("Unknown setting"));
+  if (value.length < 40) redirect("/settings?error=" + encodeURIComponent("Write at least a sentence or two"));
+  if (key === "levels" && !["alert:", "digest:", "log:", "none:"].every((l) => value.includes(l))) {
+    redirect("/settings?error=" + encodeURIComponent("Keep one line for each level: alert:, digest:, log: and none:"));
+  }
+  await setOwnerText(db(), key, value);
+  revalidatePath("/settings");
+  redirect("/settings?added=" + encodeURIComponent(`${OWNER_TEXTS[key].title} saved. Changes apply from the next check.`));
 }
 
 export async function removeTopic(form: FormData) {
