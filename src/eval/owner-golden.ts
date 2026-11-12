@@ -22,6 +22,8 @@ export interface ReviewItem {
   /** The level the judge gave each team, as the starting answer the owner corrects. */
   levels: Record<string, Level>;
   votes: ReviewVote[];
+  /** From the canary test page: reviewable, so the loop can be shown end to end, and labelled as a test. */
+  isTest: boolean;
 }
 
 /** Items a team marked not useful in the last two weeks that are not in the exam yet. Most recent vote first. */
@@ -40,8 +42,8 @@ export async function toReview(db: DB, now = new Date()): Promise<ReviewItem[]> 
   const fileUrls = new Set(loadGolden().map((g) => g.url));
   const byItem = new Map<number, ReviewItem>();
   for (const { f, j, i, c } of rows) {
-    if (inExam.has(i.id) || fileUrls.has(i.url) || i.isCanary) continue;
-    const r = byItem.get(i.id) ?? { itemId: i.id, competitor: c.name, title: i.title ?? i.url, url: i.url, levels: {}, votes: [] };
+    if (inExam.has(i.id) || fileUrls.has(i.url)) continue;
+    const r = byItem.get(i.id) ?? { itemId: i.id, competitor: c.name, title: i.title ?? i.url, url: i.url, levels: {}, votes: [], isTest: i.isCanary };
     r.votes.push({ team: j.teamKey, level: j.level, why: j.why, reason: f.reason, at: f.createdAt });
     byItem.set(i.id, r);
   }
