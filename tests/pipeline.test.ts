@@ -98,6 +98,32 @@ describe("pipeline", () => {
     expect((await db.select().from(delivery)).every((d) => d.status === "sent")).toBe(true);
   });
 
+  it("shows the judge what it already saw from this competitor, and groups the same story in one digest entry", async () => {
+    web.set("https://acme.test/blog", listing(["old-one"]));
+    web.set("https://acme.test/", home("Tagline"));
+    await runPipeline(db, "test");
+    web.set("https://acme.test/blog", listing(["old-one", "research", "press"]));
+    web.set("https://acme.test/blog/research", post("research"));
+    web.set("https://acme.test/blog/press", post("press"));
+    const seen: { title: string | null; earlier: { id: number }[] }[] = [];
+    judgeReply.mockImplementation(async (_db: unknown, _run: unknown, input: { title: string | null; earlier: { id: number }[] }) => {
+      seen.push({ title: input.title, earlier: input.earlier });
+      const base = judgment_("digest", "inspects every tool call at runtime");
+      return input.earlier.length ? { ...base, sameStoryAs: input.earlier[0]!.id, whatsNew: "Adds a customer quote." } : { ...base, sameStoryAs: null, whatsNew: null };
+    });
+    await runPipeline(db, "test");
+    expect(seen).toHaveLength(2);
+    expect(seen[0]!.earlier).toEqual([]);
+    expect(seen[1]!.earlier).toHaveLength(1);
+    const [first, second] = (await db.select().from(item).where(eq(item.status, "judged"))).sort((a, b) => a.id - b.id);
+    expect(second!.relatedItemId).toBe(first!.id);
+    expect(second!.storyNote).toBe("Adds a customer quote.");
+    const rnd = posted.filter((p) => p.env === "SLACK_rnd");
+    expect(rnd).toHaveLength(1);
+    expect(rnd[0]!.payload.text).toBe("R&D digest: 1 story, 2 posts");
+    expect(JSON.stringify(rnd[0]!.payload)).toContain("Same story");
+  });
+
   it("judges the latest 3 posts on the first check as labelled backfill, sent only in the digest", async () => {
     const slugs = ["p1", "p2", "p3", "p4", "p5"];
     web.set("https://acme.test/blog", listing(slugs));

@@ -13,6 +13,10 @@ export interface SlackItem {
   publishedAt: Date | null;
   isCanary: boolean;
   isBackfill?: boolean;
+  itemId?: number;
+  /** The earlier item of the same story, when the judge linked one. */
+  related?: { itemId: number; title: string; url: string } | null;
+  storyNote?: string | null;
 }
 
 /** Feedback links are signed so a link only rates the judgment it was sent with. */
@@ -39,6 +43,9 @@ function itemBlocks(i: SlackItem) {
         text: `*${esc(i.competitor)}* · ${label}${date}${canary}\n*<${i.url}|${esc(i.title)}>*\n${esc(i.why)}`,
       },
     },
+    ...(i.related
+      ? [{ type: "context", elements: [{ type: "mrkdwn", text: `↪ Follow-up to <${i.related.url}|${esc(i.related.title)}>${i.storyNote ? `. New: ${esc(i.storyNote)}` : ""}` }] }]
+      : []),
     ...(i.evidence.length
       ? [{ type: "context", elements: [{ type: "mrkdwn", text: i.evidence.map((q) => `> “${esc(q)}”`).join("\n").slice(0, 2900) }] }]
       : []),
@@ -61,12 +68,38 @@ export function alertMessage(teamName: string, i: SlackItem) {
   };
 }
 
+/**
+ * Groups digest items that report the same story. The judge links an item to an earlier one of the
+ * same competitor; items in one digest that share that root become one entry with several links.
+ */
+export function groupStories(items: SlackItem[]): SlackItem[][] {
+  const root = (i: SlackItem) => i.related?.itemId ?? i.itemId ?? -i.judgmentId;
+  const groups = new Map<number, SlackItem[]>();
+  for (const i of items) groups.set(root(i), [...(groups.get(root(i)) ?? []), i]);
+  for (const g of groups.values()) {
+    // The original post leads; follow-ups go under it.
+    g.sort((a, b) => Number(!!a.related) - Number(!!b.related));
+  }
+  return [...groups.values()];
+}
+
+function storyBlocks(group: SlackItem[]) {
+  const [lead, ...rest] = group as [SlackItem, ...SlackItem[]];
+  // The original sorts first, so a lead that is itself a follow-up keeps its "follow-up to" line.
+  const leadBlocks = itemBlocks(lead);
+  if (!rest.length) return leadBlocks;
+  const also = rest.map((r) => `↪ Same story: <${r.url}|${esc(r.title)}>${r.storyNote ? ` · New: ${esc(r.storyNote)}` : " · nothing new"}`).join("\n");
+  return [...leadBlocks, { type: "context", elements: [{ type: "mrkdwn", text: also.slice(0, 2900) }] }];
+}
+
 export function digestMessage(teamName: string, items: SlackItem[]) {
+  const stories = groupStories(items);
+  const count = stories.length === items.length ? `${items.length}` : `${stories.length} ${stories.length === 1 ? "story" : "stories"}, ${items.length} posts`;
   return {
-    text: `${teamName} digest: ${items.length} competitor updates`,
+    text: `${teamName} digest: ${count}`,
     blocks: [
-      { type: "header", text: { type: "plain_text", text: `${teamName} · competitor digest (${items.length})` } },
-      ...items.flatMap((i) => [{ type: "divider" }, ...itemBlocks(i)]),
+      { type: "header", text: { type: "plain_text", text: `${teamName} · competitor digest (${count})` } },
+      ...stories.flatMap((g) => [{ type: "divider" }, ...storyBlocks(g)]),
     ].slice(0, 50),
   };
 }

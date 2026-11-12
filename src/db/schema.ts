@@ -81,6 +81,10 @@ export const item = pgTable("item", {
   isCanary: boolean("is_canary").notNull().default(false),
   /** One of the latest posts found on a source's first check: judged, labelled, never an urgent alert. */
   isBackfill: boolean("is_backfill").notNull().default(false),
+  /** An earlier item of the same competitor that reports the same story, as the judge saw it. */
+  relatedItemId: integer("related_item_id"),
+  /** What this item adds to the related one, in one sentence. */
+  storyNote: text("story_note"),
 }, (t) => [uniqueIndex("item_dedupe_uq").on(t.dedupeKey), index("item_status_idx").on(t.status)]);
 
 export type NoiseLevel = "quiet" | "normal";

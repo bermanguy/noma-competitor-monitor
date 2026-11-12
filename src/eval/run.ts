@@ -42,7 +42,7 @@ export async function runEval(db: DB, opts: { model?: string; only?: string[]; i
           competitor: g.competitor, kind: g.kind, pageType: g.pageType, url: g.url, title: g.title,
           publishedAt: g.publishedAt ? new Date(g.publishedAt) : null, text: g.text, diff: g.diff,
           teams: ctx.teams, topics: ctx.topics, company: ctx.owner.company, levels: ctx.owner.levels,
-          pageGuidance: g.pageType === "pricing" ? ctx.owner["page.pricing"] : undefined,
+          pageGuidance: g.pageType === "pricing" ? ctx.owner["page.pricing"] : undefined, earlier: g.earlier,
         }, model);
         const sourceText = g.kind === "page_change" ? `${g.text}\n${g.beforeText ?? ""}` : g.text;
         for (const team of teamKeys) {

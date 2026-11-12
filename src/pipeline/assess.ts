@@ -1,9 +1,9 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import { config } from "../config";
 import type { DB } from "../db/client";
 import { competitor, feedback, item, judgment, source, team, topic } from "../db/schema";
 import { PROMPT_VERSION } from "../prompts/scaffold";
-import { judgeItem, type JudgeResult } from "./judge";
+import { judgeItem, type EarlierItem, type JudgeResult } from "./judge";
 import { BudgetExceeded, Refused } from "./llm";
 import { quotesInSource } from "./text";
 import { getOwnerTexts } from "../lib/owner-text";
@@ -34,6 +34,20 @@ export async function loadContext(db: DB) {
     description: `${t.description} (matters to: ${t.teamKeys.join(", ")})`,
   }));
   return { teams, topics, examples: await ratedExamples(db), owner: await getOwnerTexts(db) };
+}
+
+/** The competitor's items judged in the last 21 days, newest first, with the level each team got. */
+export async function earlierItems(db: DB, competitorId: number, exceptItemId: number, limit = 12): Promise<EarlierItem[]> {
+  const since = new Date(Date.now() - 21 * 864e5);
+  const rows = await db.select().from(item)
+    .where(and(eq(item.competitorId, competitorId), eq(item.status, "judged"), ne(item.id, exceptItemId), gte(item.firstSeenAt, since), eq(item.isCanary, false)))
+    .orderBy(desc(item.id)).limit(limit);
+  if (rows.length === 0) return [];
+  const js = await db.select().from(judgment).where(inArray(judgment.itemId, rows.map((r) => r.id)));
+  return rows.map((r) => ({
+    id: r.id, title: r.title, publishedAt: r.publishedAt?.toISOString().slice(0, 10) ?? null, summary: r.statusDetail ?? "",
+    levels: Object.fromEntries(js.filter((j) => j.itemId === r.id).map((j) => [j.teamKey, j.level])),
+  }));
 }
 
 /** Stores one judgment per team. A judgment whose quotes are not in the source is kept but never sent. */
@@ -72,10 +86,11 @@ export async function assessPending(db: DB, runId: number) {
         competitor: c.name, kind: i.kind, pageType, url: i.url, title: i.title, publishedAt: i.publishedAt,
         text: i.text, diff: i.diff, teams: ctx.teams, topics: ctx.topics, examples: ctx.examples,
         company: ctx.owner.company, levels: ctx.owner.levels, pageGuidance: pageType === "pricing" ? ctx.owner["page.pricing"] : undefined,
+        earlier: await earlierItems(db, c.id, i.id),
       });
       const sourceText = i.kind === "page_change" ? `${i.text}\n${i.beforeText ?? ""}` : i.text;
       await saveJudgments(db, i.id, sourceText, result, ctx.teams.map((t) => t.key), config.judgeModel);
-      await db.update(item).set({ status: "judged", statusDetail: result.summary }).where(eq(item.id, i.id));
+      await db.update(item).set({ status: "judged", statusDetail: result.summary, relatedItemId: result.sameStoryAs, storyNote: result.whatsNew }).where(eq(item.id, i.id));
       judged++;
     } catch (e) {
       if (e instanceof BudgetExceeded) return { judged, held, stoppedForBudget: true };

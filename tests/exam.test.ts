@@ -13,7 +13,7 @@ const { runEval, examState, saveBaseline } = await import("../src/eval/run");
 const g = (id: string, expected: GoldenItem["expected"]): GoldenItem => ({
   id, origin: "authored", competitor: "Acme", kind: "post", pageType: "general", url: `https://acme.test/${id}`, title: id,
   publishedAt: null, text: "Acme launched a gateway that inspects every tool call at runtime.", diff: null, beforeText: null,
-  expected, labelledBy: "draft", note: "", tags: [],
+  expected, labelledBy: "draft", note: "", tags: [], earlier: [],
 });
 
 describe("exam", () => {

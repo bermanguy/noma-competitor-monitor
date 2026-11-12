@@ -31,6 +31,8 @@ export const TeamJudgment = z.object({
 });
 export const JudgeResult = z.object({
   summary: z.string().describe("One factual sentence: what happened, in the source's tense"),
+  sameStoryAs: z.number().int().nullable().describe("Id of the item in <earlier> that reports the same story, or null"),
+  whatsNew: z.string().nullable().describe("When sameStoryAs is set: one sentence on what this item adds, or null if nothing"),
   judgments: z.array(TeamJudgment),
 });
 export type JudgeResult = z.infer<typeof JudgeResult>;
@@ -51,6 +53,23 @@ export interface JudgeInput {
   pageGuidance?: string;
   topics: { name: string; description: string }[];
   examples?: string;
+  /** This competitor's recent items, so a repeat of a story already judged is recognised. */
+  earlier?: EarlierItem[];
+}
+
+export interface EarlierItem {
+  id: number;
+  title: string | null;
+  publishedAt: string | null;
+  summary: string;
+  /** Level each team got for it, e.g. { rnd: "alert" }. */
+  levels: Record<string, string>;
+}
+
+export function earlierBlock(earlier: EarlierItem[]): string {
+  return earlier
+    .map((e) => `<item id="${e.id}" published="${e.publishedAt ?? "not stated"}">\nTitle: ${e.title ?? "(none)"}\nSummary: ${e.summary}\nTeams got: ${Object.entries(e.levels).map(([k, v]) => `${k} ${v}`).join(", ")}\n</item>`)
+    .join("\n");
 }
 
 export function buildJudgeUser(i: JudgeInput): string {
@@ -65,6 +84,7 @@ export function buildJudgeUser(i: JudgeInput): string {
     `<teams>\n${teamsBlock(i.teams)}\n</teams>`,
     `<topics>\n${i.topics.map((t) => `- ${t.name}: ${t.description}`).join("\n")}\n</topics>`,
     i.examples ? `<rated_examples>\n${i.examples}\n</rated_examples>` : "",
+    `<earlier>\n${i.earlier?.length ? earlierBlock(i.earlier) : "(none)"}\n</earlier>`,
     `Competitor: ${i.competitor}\nURL: ${i.url}\nTitle: ${i.title ?? "(none)"}\nPublished: ${i.publishedAt?.toISOString().slice(0, 10) ?? "not stated"}`,
     body,
     `Return one judgment per team key (${i.teams.map((t) => t.key).join(", ")}). Topics must be names from <topics>.`,
@@ -73,8 +93,11 @@ export function buildJudgeUser(i: JudgeInput): string {
     .join("\n\n");
 }
 
-export async function judgeItem(db: DB, runId: number | undefined, i: JudgeInput, model = config.judgeModel) {
-  return structuredCall({
+export async function judgeItem(db: DB, runId: number | undefined, i: JudgeInput, model = config.judgeModel): Promise<JudgeResult> {
+  const r = await structuredCall({
     db, runId, purpose: "judge", model, system: JUDGE_SYSTEM, user: buildJudgeUser(i), schema: JudgeResult,
   });
+  // Only an id that was actually offered counts as the same story.
+  const known = r.sameStoryAs != null && (i.earlier ?? []).some((e) => e.id === r.sameStoryAs);
+  return { ...r, sameStoryAs: known ? r.sameStoryAs : null, whatsNew: known ? r.whatsNew : null };
 }

@@ -108,6 +108,8 @@ One call per item returns, for each team:
 
 The company profile (what Noma sells), the level definitions, each team's lens and the topics are owner-owned text, edited in Settings and inserted into the prompt; the files in `src/prompts/owner/` are only the starting versions ([0007](decisions/0007-owner-editable-prompt-meaning.md)). Four named levels with concrete anchors replace a 1–10 score, because models compress numeric scores toward the middle.
 
+**Same story.** The judge also sees the same competitor's items from the last 21 days, with the level each team got ([0008](decisions/0008-same-story-in-the-judge.md)). If the item reports the same event or finding as one of them (a press release about research already posted, for example), it links to it (`sameStoryAs`) and says what is new (`whatsNew`). A team that already got the story gets `log` unless the new item adds something that matters to it. Alerts for a follow-up say "Follow-up to …", and the digest groups the posts of one story into one entry.
+
 Each team's noise setting maps to levels: **quiet** sends `alert` only; **normal** sends `alert` now and `digest` in the morning daily digest (08:00 Israel time in winter, 09:00 in summer); nothing below `digest` is ever sent. Everything, including `log` and `none`, appears in the web feed with its reason.
 
 ## Output quality loop
@@ -182,7 +184,7 @@ docs/               scope, demo script, architecture, decisions, research
 | 4 to 50 competitors | Same design; a run is minutes of I/O | Fetch concurrency limit per domain; more frequent runs |
 | 50 to 500 competitors | Stage-per-table design | Move from one cron process to a job queue with workers; Firecrawl or a managed scraper for hard sites |
 | More teams or topics | One judgment call covers all teams | Prompt size; split into per-team calls past ~6 teams |
-| More volume per team | Levels and caps | Clustering duplicates across sources (embeddings) |
+| More volume per team | Levels, caps, same-story linking per competitor | Clustering duplicates across competitors and sources (embeddings) |
 
 ## Confirm-first choices (confirmed by Guy, 2026-11-12)
 

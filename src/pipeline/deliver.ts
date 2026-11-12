@@ -46,12 +46,18 @@ async function slackItems(db: DB, ids: number[]): Promise<Map<number, SlackItem>
     .innerJoin(item, eq(judgment.itemId, item.id))
     .innerJoin(competitor, eq(item.competitorId, competitor.id))
     .where(inArray(judgment.id, ids));
+  const relatedIds = [...new Set(rows.map((r) => r.i.relatedItemId).filter((x): x is number => x != null))];
+  const related = new Map(
+    (relatedIds.length ? await db.select({ id: item.id, title: item.title, url: item.url }).from(item).where(inArray(item.id, relatedIds)) : [])
+      .map((r) => [r.id, { itemId: r.id, title: r.title ?? r.url, url: r.url }]),
+  );
   return new Map(
     rows.map(({ j, i, c }) => [
       j.id,
       {
         judgmentId: j.id, competitor: c.name, title: i.title ?? i.url, url: i.url, kind: i.kind, level: j.level,
         why: j.why, evidence: j.evidence, publishedAt: i.publishedAt, isCanary: i.isCanary, isBackfill: i.isBackfill,
+        itemId: i.id, related: i.relatedItemId != null ? related.get(i.relatedItemId) ?? null : null, storyNote: i.storyNote,
       },
     ]),
   );

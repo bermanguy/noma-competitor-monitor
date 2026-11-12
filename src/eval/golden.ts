@@ -29,6 +29,10 @@ export const GoldenItem = z.object({
   /** Why these levels, in one or two sentences, so a later reviewer can disagree with a reason. */
   note: z.string().default(""),
   tags: z.array(z.string()).default([]),
+  /** Items of the same competitor the judge has already seen, to test that a repeated story is not sent twice. */
+  earlier: z.array(z.object({
+    id: z.number().int(), title: z.string().nullable(), publishedAt: z.string().nullable(), summary: z.string(), levels: z.record(z.string(), z.string()),
+  })).default([]),
 });
 export type GoldenItem = z.infer<typeof GoldenItem>;
 
