@@ -52,7 +52,7 @@ describe("same story", () => {
   });
 
   it("splits a long digest into parts under Slack's block limit and keeps every item", () => {
-    const items: SlackItem[] = Array.from({ length: 40 }, (_, n) => ({
+    const items: SlackItem[] = Array.from({ length: 60 }, (_, n) => ({
       judgmentId: n + 1, itemId: n + 1, competitor: "Acme", title: `t${n}`, url: `https://acme.test/${n}`, kind: "post", level: "digest",
       why: "w", evidence: ["one quote here", "a second quote"], publishedAt: null, isCanary: false,
     }));
@@ -60,8 +60,23 @@ describe("same story", () => {
     expect(parts.length).toBeGreaterThan(1);
     for (const p of parts) expect(p.payload.blocks.length).toBeLessThanOrEqual(MAX_BLOCKS);
     expect(parts.flatMap((p) => p.judgmentIds)).toEqual(items.map((i) => i.judgmentId));
-    expect(parts[1]!.payload.text).toBe(`Product digest: 40 · part 2 of ${parts.length}`);
-    // A digest entry shows one quote; alerts keep all of them.
-    expect(JSON.stringify(parts[0]!.payload)).not.toContain("a second quote");
+    expect(parts[1]!.payload.text).toBe(`Product digest: 60 · part 2 of ${parts.length}`);
+    // A digest bullet is short: the quotes stay in alerts and the web feed.
+    expect(JSON.stringify(parts[0]!.payload)).not.toContain("one quote here");
+  });
+
+  it("groups the digest by the owner's topics, in the owner's order, with the rest under Other", () => {
+    const it = (judgmentId: number, topics: string[]): SlackItem => ({
+      judgmentId, itemId: judgmentId, competitor: "Acme", title: `t${judgmentId}`, url: `https://acme.test/${judgmentId}`, kind: "post", level: "digest",
+      why: `why ${judgmentId}`, evidence: [], publishedAt: null, isCanary: false, topics,
+    });
+    const [part] = digestMessages("Product", [it(1, []), it(2, ["MCP security"]), it(3, ["Gone topic", "Runtime security"]), it(4, ["Runtime security"])], ["Runtime security", "MCP security"]);
+    const texts = part!.payload.blocks.map((b) => JSON.stringify(b));
+    const at = (s: string) => texts.findIndex((t) => t.includes(s));
+    expect(at("*Runtime security* (2)")).toBeLessThan(at("*MCP security* (1)"));
+    expect(at("*MCP security* (1)")).toBeLessThan(at("*Other* (1)"));
+    expect(at("why 3")).toBeLessThan(at("*MCP security*"));
+    expect(texts.join()).toContain("Runtime security 2 · MCP security 1 · Other 1");
+    expect(part!.judgmentIds.sort()).toEqual([1, 2, 3, 4]);
   });
 });

@@ -17,6 +17,8 @@ export interface SlackItem {
   /** The earlier item of the same story, when the judge linked one. */
   related?: { itemId: number; title: string; url: string } | null;
   storyNote?: string | null;
+  /** Topics the judge matched for this team, in the judge's order. */
+  topics?: string[];
 }
 
 /** Feedback links are signed so a link only rates the judgment it was sent with. */
@@ -83,13 +85,18 @@ export function groupStories(items: SlackItem[]): SlackItem[][] {
   return [...groups.values()];
 }
 
-function storyBlocks(group: SlackItem[]) {
+/** One digest bullet per story: who, what (linked), why it matters for this team, and the vote links. */
+function storyBullet(group: SlackItem[]): string {
   const [lead, ...rest] = group as [SlackItem, ...SlackItem[]];
-  // The original sorts first, so a lead that is itself a follow-up keeps its "follow-up to" line.
-  const leadBlocks = itemBlocks(lead, true);
-  if (!rest.length) return leadBlocks;
-  const also = rest.map((r) => `↪ Same story: <${r.url}|${esc(r.title)}>${r.storyNote ? ` · New: ${esc(r.storyNote)}` : " · nothing new"}`).join("\n");
-  return [...leadBlocks, { type: "context", elements: [{ type: "mrkdwn", text: also.slice(0, 2900) }] }];
+  const tags = [lead.kind === "page_change" ? "page change" : "", lead.isCanary ? "TEST PAGE" : "", lead.isBackfill ? "published before monitoring started" : ""].filter(Boolean);
+  const votes = `<${feedbackUrl(lead.judgmentId, true)}|👍>  <${feedbackUrl(lead.judgmentId, false)}|👎>`;
+  const lines = [
+    `• *${esc(lead.competitor)}* · *<${lead.url}|${esc(lead.title)}>*${tags.length ? ` _(${tags.join(", ")})_` : ""}`,
+    `      ${esc(lead.why)}   ${votes}`,
+    ...(lead.related ? [`      ↪ Follow-up to <${lead.related.url}|${esc(lead.related.title)}>${lead.storyNote ? `. New: ${esc(lead.storyNote)}` : ""}`] : []),
+    ...rest.map((r) => `      ↪ Same story: <${r.url}|${esc(r.title)}>${r.storyNote ? ` · New: ${esc(r.storyNote)}` : " · nothing new"}`),
+  ];
+  return lines.join("\n").slice(0, 2900);
 }
 
 /** Slack refuses a message over 50 blocks, so a long digest is split into parts. Nothing is ever cut. */
@@ -97,16 +104,32 @@ export const MAX_BLOCKS = 48;
 
 export interface DigestPart { payload: { text: string; blocks: unknown[] }; judgmentIds: number[] }
 
-export function digestMessages(teamName: string, items: SlackItem[]): DigestPart[] {
+const OTHER = "Other";
+
+/**
+ * The daily digest reads as a short brief: one section per topic the owner watches, in the owner's
+ * order, each story one bullet. A story goes under the first of its topics that the owner still watches.
+ */
+export function digestMessages(teamName: string, items: SlackItem[], topicOrder: string[] = []): DigestPart[] {
   const stories = groupStories(items);
   const count = stories.length === items.length ? `${items.length}` : `${stories.length} ${stories.length === 1 ? "story" : "stories"}, ${items.length} posts`;
-  const chunks: SlackItem[][][] = [[]];
-  let used = 1; // the header
-  for (const g of stories) {
-    const size = storyBlocks(g).length + 1; // plus its divider
-    if (used + size > MAX_BLOCKS && chunks[chunks.length - 1]!.length) { chunks.push([]); used = 1; }
-    chunks[chunks.length - 1]!.push(g);
-    used += size;
+  const topicOf = (g: SlackItem[]) => g[0]!.topics?.find((t) => topicOrder.includes(t)) ?? OTHER;
+  const sections = [...topicOrder, OTHER]
+    .map((name) => ({ name, stories: stories.filter((g) => topicOf(g) === name) }))
+    .filter((x) => x.stories.length);
+  const overview = sections.length > 1 ? sections.map((x) => `${x.name} ${x.stories.length}`).join(" · ") : "";
+
+  // Each unit is a block plus the judgments it carries, so a split never loses or repeats an item.
+  const units: { block: unknown; ids: number[] }[] = sections.flatMap((x) => [
+    { block: { type: "section", text: { type: "mrkdwn", text: `*${esc(x.name)}* (${x.stories.length})` } }, ids: [] as number[] },
+    ...x.stories.map((g) => ({ block: { type: "section", text: { type: "mrkdwn", text: storyBullet(g) } }, ids: g.map((i) => i.judgmentId) })),
+  ]);
+  const head = 2; // header and overview
+  const chunks: (typeof units)[] = [[]];
+  for (const u of units) {
+    const cur = chunks[chunks.length - 1]!;
+    if (head + cur.length + 1 > MAX_BLOCKS && cur.length) chunks.push([]);
+    chunks[chunks.length - 1]!.push(u);
   }
   return chunks.map((chunk, n) => {
     const part = chunks.length > 1 ? ` · part ${n + 1} of ${chunks.length}` : "";
@@ -115,10 +138,11 @@ export function digestMessages(teamName: string, items: SlackItem[]): DigestPart
         text: `${teamName} digest: ${count}${part}`,
         blocks: [
           { type: "header", text: { type: "plain_text", text: `${teamName} · competitor digest (${count})${part}` } },
-          ...chunk.flatMap((g) => [{ type: "divider" }, ...storyBlocks(g)]),
+          { type: "context", elements: [{ type: "mrkdwn", text: `${overview ? `${overview}   ·   ` : ""}👍 / 👎 on any line tells us what to send next time.` }] },
+          ...chunk.map((u) => u.block),
         ],
       },
-      judgmentIds: chunk.flat().map((i) => i.judgmentId),
+      judgmentIds: chunk.flatMap((u) => u.ids),
     };
   });
 }
