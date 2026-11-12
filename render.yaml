@@ -14,7 +14,8 @@ services:
     runtime: docker
     plan: starter
     region: frankfurt
-    schedule: "0 */3 * * *"
+    # Fires hourly; the job itself runs every 3 hours on Israel time (00, 03, 06, 09...), so the digest lands at 09:00 year-round.
+    schedule: "0 * * * *"
     dockerCommand: npx tsx scripts/run-pipeline.ts schedule
     envVars:
       - fromGroup: competitor-monitor
