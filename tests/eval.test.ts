@@ -43,3 +43,25 @@ describe("golden set", () => {
     for (const g of items.filter((x) => x.expected)) expect(Object.keys(g.expected!).sort()).toEqual(["marketing", "product", "rnd"]);
   });
 });
+
+describe("golden export", () => {
+  it("exports judged, non-canary items without the model's answer", async () => {
+    const { testDb } = await import("./helpers");
+    const { competitor, item, source } = await import("../src/db/schema");
+    const { exportGolden } = await import("../src/eval/export");
+    const { GoldenItem } = await import("../src/eval/golden");
+    const db = await testDb();
+    const [c] = await db.insert(competitor).values({ name: "Acme Corp", domain: "acme.test" }).returning();
+    const [s] = await db.insert(source).values({ competitorId: c!.id, kind: "listing", url: "https://acme.test/blog", label: "Blog" }).returning();
+    const row = { sourceId: s!.id, competitorId: c!.id, kind: "post" as const, text: "Acme launched a gateway that inspects every tool call." };
+    await db.insert(item).values([
+      { ...row, url: "https://acme.test/blog/a", title: "Launching Gatekeeper!", status: "judged", dedupeKey: "a" },
+      { ...row, url: "https://acme.test/blog/b", title: "Old", status: "baseline", dedupeKey: "b" },
+      { ...row, url: "https://acme.test/blog/c", title: "Canary", status: "judged", dedupeKey: "c", isCanary: true },
+    ]);
+    const out = await exportGolden(db, { latest: 10 });
+    expect(out.map((g) => g.id)).toEqual(["live-acme-corp-launching-gatekeeper"]);
+    expect(out[0]!.expected).toBeNull();
+    expect(GoldenItem.safeParse(out[0]).success).toBe(true);
+  });
+});

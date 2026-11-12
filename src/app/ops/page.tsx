@@ -127,6 +127,7 @@ export default async function Ops({ searchParams }: { searchParams: Promise<{ ms
               {fb.map((r) => <tr key={r.team}><td>{r.team}</td><td>{r.total}</td><td>{Math.round((100 * Number(r.useful)) / Number(r.total))}%</td></tr>)}
             </tbody>
           </table>
+          <p className="muted">Golden set: <a href="/ops/golden-export?latest=30">Download the latest 30 judged items for the exam</a>, then add them with <code>npm run golden:export -- --from-file</code> and label each one.</p>
           <p className="muted">Judgments held back because a quote was not in the source: {heldEvidence[0]?.n ?? 0}. Golden-set precision per team: see the latest eval report in the repository.</p>
         </div>
       </div>
