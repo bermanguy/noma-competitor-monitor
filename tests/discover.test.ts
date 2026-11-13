@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyLinks, discoverSources, findPosts, siteLinks } from "../src/pipeline/discover";
+import { classifyLinks, discoverSources, findPosts, siteLinks, titleFromUrl } from "../src/pipeline/discover";
 import type { FetchResult } from "../src/pipeline/fetch";
 
 const filler = "<p>" + "Secure every AI model and agent across the enterprise with one platform. ".repeat(4) + "</p>";
@@ -69,6 +69,13 @@ describe("findPosts", () => {
   it("keeps the listing's own path when articles live under it", () => {
     const html = `<a href="/blog/one-long-post-title">1</a><a href="/blog/two-long-post-title">2</a><a href="/blog/three-long-post-title">3</a>`;
     expect(findPosts(html, "https://x.com/blog")?.prefix).toBe("/blog");
+  });
+  it("skips a hub's own section links and finds the articles they point to", () => {
+    const html = `<a href="/innovation-hub/insights">Insights</a><a href="/innovation-hub/research">Research</a><a href="/innovation-hub/case-study">Case Study</a>
+      <a href="/insight/ai-agent-skills-security"></a><a href="/insight/how-hiddenlayer-secures-cursor"></a><a href="/insight/behind-the-build-hackathon"></a>`;
+    const found = findPosts(html, "https://x.com/innovation-hub");
+    expect(found?.prefix).toBe("/insight");
+    expect(titleFromUrl(found!.links[0]!.url)).toBe("Ai agent skills security");
   });
   it("ignores a menu of short product links", () => {
     const html = `<a href="/solutions/ciso">a</a><a href="/solutions/red-teaming">b</a><a href="/solutions/soc">c</a>`;

@@ -18,6 +18,25 @@ const FINDING = [
 const ROLE_NAME: Record<SourceRole, string> = { homepage: "Homepage", posts: "Blog / news", product: "Product page", pricing: "Pricing" };
 const host = (u: string) => u.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
 
+/** A server call that can't hang the wizard: it fails after `ms`, and any failure comes back as a plain message. */
+async function call<T>(p: Promise<T>, ms: number): Promise<{ ok: true; value: T } | { ok: false; error: string; reload?: boolean }> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const value = await Promise.race([
+      p,
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), ms); }),
+    ]);
+    return { ok: true, value };
+  } catch (e) {
+    const msg = (e as Error)?.message ?? "";
+    if (msg === "timeout") return { ok: false, error: "This is taking too long. Reload the page and check the list before trying again." , reload: true };
+    // After a deploy, a page opened before it can't reach the new server code.
+    return { ok: false, error: "We couldn't reach the server. The app may have just been updated: reload the page and try again.", reload: true };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Add a competitor in three steps: website, pages to watch, first check. */
 export function AddCompetitorWizard() {
   const router = useRouter();
@@ -28,6 +47,8 @@ export function AddCompetitorWizard() {
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [needsReload, setNeedsReload] = useState(false);
+  const fail = (r: { error: string; reload?: boolean }) => { setError(r.error); setNeedsReload(!!r.reload); };
   const [found, setFound] = useState<{ sources: Proposed[]; notes: string[]; restoring: boolean; domain: string } | null>(null);
   const [extraUrl, setExtraUrl] = useState("");
   const [extraRole, setExtraRole] = useState<SourceRole>("pricing");
@@ -65,9 +86,11 @@ export function AddCompetitorWizard() {
 
   async function find(e: React.FormEvent) {
     e.preventDefault();
-    setError(null); setBusy(true); setTick(0);
-    const r = await findPagesAction(name, domain);
+    setError(null); setNeedsReload(false); setBusy(true); setTick(0);
+    const res = await call(findPagesAction(name, domain), 90_000);
     setBusy(false);
+    if (!res.ok) return fail(res);
+    const r = res.value;
     if (!r.ok) return setError(r.error);
     setFound({ sources: r.sources, notes: r.notes, restoring: r.restoring, domain: r.domain });
     setStep(2);
@@ -79,8 +102,10 @@ export function AddCompetitorWizard() {
   async function addExtra() {
     if (!extraUrl.trim()) return;
     setExtraBusy(true); setExtraError(null);
-    const r = await checkPageAction(extraUrl, extraRole);
+    const res = await call(checkPageAction(extraUrl, extraRole), 45_000);
     setExtraBusy(false);
+    if (!res.ok) return setExtraError(res.error);
+    const r = res.value;
     if (!r.ok) return setExtraError(r.error);
     if (found?.sources.some((s) => s.url === r.source.url)) return setExtraError("That page is already in the list.");
     setFound((f) => f && { ...f, sources: [...f.sources, r.source] });
@@ -90,24 +115,26 @@ export function AddCompetitorWizard() {
   async function watch() {
     if (!found) return;
     const chosen = found.sources.filter((s) => s.checked);
-    setBusy(true); setError(null);
-    const r = await createFromWizardAction(name, found.domain, chosen);
+    setBusy(true); setError(null); setNeedsReload(false);
+    const res = await call(createFromWizardAction(name, found.domain, chosen), 30_000);
     setBusy(false);
+    if (!res.ok) return fail(res);
+    const r = res.value;
     if (!r.ok) return setError(r.error);
     setCreated({ sources: r.sources, restored: r.restored });
     setChecks(Object.fromEntries(r.sources.map((s) => [s.id, { state: "running", text: "Reading…" }])));
     setStep(3);
     await Promise.all(
       r.sources.map(async (s) => {
-        try {
-          const c = await firstCheckAction(s.id, r.runId);
-          setChecks((m) => ({ ...m, [s.id]: { state: c.ok ? "ok" : "failed", text: c.text } }));
-        } catch {
-          setChecks((m) => ({ ...m, [s.id]: { state: "failed", text: "Couldn't read it" } }));
-        }
+        // A slow page is not a failure: it is saved, and the scheduled check reads it.
+        const c = await call(firstCheckAction(s.id, r.runId), 120_000);
+        setChecks((m) => ({
+          ...m,
+          [s.id]: c.ok ? { state: c.value.ok ? "ok" : "failed", text: c.value.text } : { state: "ok", text: "Saved · read on the next check" },
+        }));
       }),
     );
-    await finishWizardAction();
+    await call(finishWizardAction(), 10_000);
   }
 
   const chosenCount = found?.sources.filter((s) => s.checked).length ?? 0;
@@ -159,7 +186,7 @@ export function AddCompetitorWizard() {
                   <input type="text" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="e.g. hiddenlayer.com" disabled={busy} />
                   <div className="muted" style={{ marginTop: 6 }}>Just the domain is enough. We read their homepage menu to find product, pricing, blog and news pages.</div>
                   {busy && <div className="wz-finding"><span className="wz-spin" />{FINDING[Math.min(tick, FINDING.length - 1)]}</div>}
-                  {error && <div className="wz-error">{error}</div>}
+                  {error && <div className="wz-error">{error}{needsReload && <> <button type="button" className="secondary wz-reload" onClick={() => window.location.reload()}>Reload</button></>}</div>}
                 </div>
                 <div className="wz-foot">
                   <span />
@@ -213,7 +240,7 @@ export function AddCompetitorWizard() {
                     <button type="button" className="secondary" onClick={addExtra} disabled={extraBusy || !extraUrl.trim()}>{extraBusy ? "Checking…" : "Add"}</button>
                   </div>
                   {extraError && <div className="wz-error">{extraError}</div>}
-                  {error && <div className="wz-error">{error}</div>}
+                  {error && <div className="wz-error">{error}{needsReload && <> <button type="button" className="secondary wz-reload" onClick={() => window.location.reload()}>Reload</button></>}</div>}
                 </div>
                 <div className="wz-foot">
                   <button className="secondary" onClick={() => { setStep(1); setError(null); }} disabled={busy}>← Back</button>

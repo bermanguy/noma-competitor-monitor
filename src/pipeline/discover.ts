@@ -104,7 +104,9 @@ export function findPosts(html: string, pageUrl: string): { prefix: string; link
   const own = new URL(pageUrl).pathname.replace(/\/$/, "");
   if (own) {
     const links = extractListingLinks(html, pageUrl, own);
-    if (links.length >= 3) return { prefix: own, links };
+    // Only real articles count: a hub's own section links (/innovation-hub/insights, /innovation-hub/case-study) are not posts.
+    const articles = links.filter((l) => looksLikeArticle(new URL(l.url).pathname.split("/").filter(Boolean).pop() ?? ""));
+    if (articles.length >= 3) return { prefix: own, links };
   }
   const groups = new Map<string, number>();
   for (const l of siteLinks(html, pageUrl)) {
@@ -118,6 +120,13 @@ export function findPosts(html: string, pageUrl: string): { prefix: string; link
   const links = extractListingLinks(html, pageUrl, best[0]);
   return links.length >= 3 ? { prefix: best[0], links } : null;
 }
+
+/** "…/insight/ai-agent-skills-security" -> "Ai agent skills security", for a card link with no readable text. */
+export const titleFromUrl = (u: string) => {
+  const slug = new URL(u).pathname.split("/").filter(Boolean).pop() ?? u;
+  const t = decodeURIComponent(slug).replace(/[-_]+/g, " ").trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
 
 const titleCase = (seg: string) => seg.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -181,7 +190,7 @@ export async function discoverSources(domain: string, fetcher: Fetcher = httpFet
     seenUrls.add(key);
     posts.push({
       kind: "listing", url: l.url, label: l.label, role: "posts", pageType: "general", linkPrefix: l.found.prefix,
-      sample: l.found.links.slice(0, 3).map((x) => x.title ?? x.url), checked: posts.length < 2,
+      sample: l.found.links.slice(0, 3).map((x) => x.title ?? titleFromUrl(x.url)), checked: posts.length < 2,
     });
   }
   sources.push(...posts);

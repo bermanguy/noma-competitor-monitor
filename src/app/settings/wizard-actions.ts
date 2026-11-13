@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { competitor, item, run, snapshot, source } from "@/db/schema";
 import { createCompetitor, normalizeDomain } from "@/lib/competitors";
-import { discoverSources, findPosts, type Proposed, type SourceRole } from "@/pipeline/discover";
+import { discoverSources, findPosts, titleFromUrl, type Proposed, type SourceRole } from "@/pipeline/discover";
 import { collectSource } from "@/pipeline/collect";
 import { fetchSource } from "@/pipeline/fetch";
 import { extractMain } from "@/pipeline/extract";
@@ -49,7 +49,7 @@ export async function checkPageAction(urlRaw: string, role: SourceRole): Promise
     if (role === "posts") {
       const posts = findPosts(r.body, r.url);
       if (!posts) return { ok: false, error: "We opened it but found no list of articles. Add it as a product page instead." };
-      return { ok: true, source: { kind: "listing", url: r.url, label, role, pageType: "general", linkPrefix: posts.prefix, sample: posts.links.slice(0, 3).map((l) => l.title ?? l.url), checked: true } };
+      return { ok: true, source: { kind: "listing", url: r.url, label, role, pageType: "general", linkPrefix: posts.prefix, sample: posts.links.slice(0, 3).map((l) => l.title ?? titleFromUrl(l.url)), checked: true } };
     }
     if (extractMain(r.body, r.url, "page").text.length < 100) return { ok: false, error: "The page opened but has almost no text. It may need a browser to load." };
     return { ok: true, source: { kind: "page", url: r.url, label: role === "pricing" ? "Pricing" : label, role, pageType: role === "pricing" ? "pricing" : "general", sample: [], checked: true } };
