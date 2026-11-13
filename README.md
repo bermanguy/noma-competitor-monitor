@@ -2,6 +2,8 @@
 
 Watches competitors' blogs and key pages, judges every new post or quiet page change separately for Marketing, Product and R&D, and posts what matters to each team's Slack channel, with the reason and a quote from the source.
 
+**Status:** MVP. It rolls out first to the area owners and a few business users, to validate accuracy with their votes before widening and adding sources ([decision 0015](docs/decisions/0015-mvp-rollout-with-owners-first.md)).
+
 **Live:** https://competitor-monitor-kqys.onrender.com (runs every 3 hours on its own)
 
 ## Who uses what
@@ -28,7 +30,7 @@ npm run eval                         # the exam: per-team precision / recall
 ## Read next
 
 - [Design doc](docs/design.md): architecture, choices, scale, quality, risks
-- [Decisions](docs/decisions/): one short record per choice (0001 to 0014)
+- [Decisions](docs/decisions/): one short record per choice (0001 to 0015)
 - [Demo script](docs/demo-script.md) and [scope](docs/scope.md)
 
 ## AI assistants used
