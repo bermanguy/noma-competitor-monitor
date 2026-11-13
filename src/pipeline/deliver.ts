@@ -69,7 +69,7 @@ export async function planDelivery(db: DB, now = new Date()) {
   const teams = await db.select().from(team);
   const topicOrder = (await db.select({ name: topic.name }).from(topic).where(eq(topic.active, true)).orderBy(topic.id)).map((t) => t.name);
   const candidates = await db
-    .select({ judgmentId: judgment.id, teamKey: judgment.teamKey, level: judgment.level, evidenceOk: judgment.evidenceOk, createdAt: judgment.createdAt, isBackfill: item.isBackfill })
+    .select({ judgmentId: judgment.id, teamKey: judgment.teamKey, level: judgment.level, evidenceOk: judgment.evidenceOk, createdAt: judgment.createdAt, isBackfill: item.isBackfill, isCanary: item.isCanary })
     .from(judgment)
     .innerJoin(item, eq(judgment.itemId, item.id))
     .where(and(gte(judgment.createdAt, since), inArray(judgment.level, ["alert", "digest"])));
@@ -85,6 +85,10 @@ export async function planDelivery(db: DB, now = new Date()) {
   }
 
   const p = plan(candidates, teams, alreadySent, alertsSentToday);
+  // Test pages never go in a digest: an urgent canary change still posts on its own, so the chain
+  // is tested end to end, but a team's daily brief holds only real competitors. A digest left empty is not sent.
+  const canary = new Set(candidates.filter((c) => c.isCanary).map((c) => c.judgmentId));
+  for (const [k, ids] of p.digest) p.digest.set(k, ids.filter((id) => !canary.has(id)));
   const items = await slackItems(db, [...[...p.alerts.values()].flat(), ...[...p.digest.values()].flat()]);
   return { teams, topicOrder, plan: p, items };
 }
