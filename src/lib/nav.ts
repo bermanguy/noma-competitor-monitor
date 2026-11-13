@@ -40,6 +40,7 @@ export const RAIL: RailItem[] = [
       { items: [{ key: "overview", label: "Overview" }, { key: "runs", label: "Runs" }, { key: "sources", label: "Sources" }, { key: "errors", label: "Not sent (errors)", badge: "errors" }] },
       { label: "Quality", items: [{ key: "evals", label: "Evals (golden set)" }, { key: "feedback", label: "Team feedback" }, { key: "spend", label: "Model spend" }] },
       { label: "Testing", items: [{ key: "canary", label: "Canary pages" }] },
+      { label: "Access", items: [{ key: "connector", label: "Claude connector" }] },
     ],
   },
 ];

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { config } from "@/config";
 import type { DB } from "@/db/client";
 import { mcpCall } from "@/db/schema";
 import type { Viewer } from "@/lib/view-as";
@@ -11,7 +12,13 @@ import { TOOLS, ToolError, UNTRUSTED } from "./tools";
  * calls. That is all a read-mostly connector needs, and it keeps the attack surface small.
  */
 export const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"];
-export const SERVER_INFO = { name: "competitor-monitor", title: "Competitor Monitor", version: "1.0.0" };
+export const SERVER_INFO = {
+  name: "competitor-monitor",
+  title: "Competitor Monitor",
+  version: "1.0.0",
+  /** The app's radar logo, so Claude can show it next to the connector (MCP 2025-11-25 "icons"). */
+  icons: [{ src: `${config.publicUrl}/icon.png`, mimeType: "image/png", sizes: ["256x256"] }],
+};
 
 export const INSTRUCTIONS =
   "Competitor Monitor watches Noma Security's competitors and judges every new post or page change once per team " +
