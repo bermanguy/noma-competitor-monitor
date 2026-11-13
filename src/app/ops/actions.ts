@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { competitor, item, setting, source, type FetchMode, type PageType, type SourceKind } from "@/db/schema";
 import { runPipeline } from "@/pipeline/run";
 import { saveBaseline, startExam } from "@/eval/run";
+import { setReportStatus } from "@/lib/reports";
 
 export async function runNow() {
   // Runs in the background of the web process; the run record shows progress.
@@ -72,4 +73,11 @@ export async function saveExamBaseline() {
   const msg = !r ? "Nothing to save yet: run the evals first."
     : `Baseline updated: was ${r.was ? localDateTime(r.was) : "none"}, now ${localDateTime(r.now)}. New runs are compared with this one.`;
   redirect("/ops/evals?msg=" + encodeURIComponent(msg));
+}
+
+export async function markReport(form: FormData) {
+  const status = form.get("status") === "fixed" ? "fixed" : "open";
+  await setReportStatus(db(), Number(form.get("id")), status);
+  revalidatePath("/ops/reports");
+  redirect("/ops/reports");
 }

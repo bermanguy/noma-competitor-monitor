@@ -5,7 +5,8 @@ import { competitor, delivery, feedback, item, judgment, run, setting, source, u
 import { config } from "@/config";
 import { DEFAULT_CANARY_PRICING } from "@/lib/canary";
 import { sourceHealth } from "@/pipeline/health";
-import { addSource, retryItem, runExam, runNow, saveCanary, saveCanaryPricing, saveExamBaseline, updateSource } from "../actions";
+import { addSource, markReport, retryItem, runExam, runNow, saveCanary, saveCanaryPricing, saveExamBaseline, updateSource } from "../actions";
+import { browserName, listReports, mb, reporterLine } from "@/lib/reports";
 import { examState } from "@/eval/run";
 import { compareRuns, ownerItemResults, pct } from "@/eval/score";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -20,6 +21,7 @@ const LEAD: Record<OpsSection, string> = {
   runs: "Every run of the pipeline, newest first.",
   sources: "Every page and feed we read, and whether it is healthy.",
   errors: "Items that failed or were held back, so nothing is lost silently.",
+  reports: "Problems people reported with the Report a problem button, newest first. Each one is also posted to the ops Slack channel.",
   evals: "Test the judge on the golden set before a prompt or model change ships, and compare with the last good run.",
   feedback: "After a change ships: how useful each team finds what we send, from their 👍/👎 in Slack. \"Not useful\" votes go to Setup → To review, where the owner can add them to the golden set.",
   spend: "What the models cost this month.",
@@ -261,6 +263,29 @@ export default async function Ops({ params, searchParams }: { params: Promise<{ 
           </tbody>
         </table>
       ))}
+
+      {on("reports") && (async () => {
+        const reports = await listReports(d);
+        if (reports.length === 0) return <div className="card muted">No problems reported yet. Anyone can report one with the Report a problem button at the bottom of the left menu.</div>;
+        return reports.map((r) => (
+          <div key={r.id} id={`report-${r.id}`} className={`card report${r.status === "fixed" ? " fixed" : ""}`}>
+            <div className="report-head">
+              <span className={`chip ${r.status === "open" ? "h-quiet" : "h-healthy"}`}>{r.status === "open" ? "Open" : "Fixed"}</span>
+              <strong>{reporterLine(r.reporterName, r.reporterRole, r.reporterTeam)}</strong>
+              <span className="muted">{localDateTime(r.createdAt)} · on <a href={r.page}>{r.page}</a></span>
+              <form action={markReport} className="report-act">
+                <input type="hidden" name="id" value={r.id} />
+                <input type="hidden" name="status" value={r.status === "open" ? "fixed" : "open"} />
+                <button className="secondary">{r.status === "open" ? "Mark fixed" : "Reopen"}</button>
+              </form>
+            </div>
+            <p className="report-text">{r.description}</p>
+            {r.fileType?.startsWith("image/") && <a href={`/ops/report-file/${r.id}`} target="_blank"><img className="report-media" src={`/ops/report-file/${r.id}`} alt={`Screenshot: ${r.fileName ?? ""}`} /></a>}
+            {r.fileType?.startsWith("video/") && <video className="report-media" src={`/ops/report-file/${r.id}`} controls preload="metadata" />}
+            <div className="muted small" title={r.userAgent ?? undefined}>#{r.id}{r.fileName ? ` · ${r.fileName} (${mb(r.fileSize ?? 0)})` : ""}{r.userAgent ? ` · ${browserName(r.userAgent)}` : ""}</div>
+          </div>
+        ));
+      })()}
 
       {on("canary") && (<>
       <p className="muted">A page we control, watched like a competitor page. Edit it to check the whole chain end to end: the next run should detect, judge and deliver the change, labelled as a test.</p>

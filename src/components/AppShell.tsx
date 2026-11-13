@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { RAIL, locate, subHref, type BadgeKey, type RailKey } from "@/lib/nav";
 import { ROLE_NAME, type Role, type Viewer } from "@/lib/view-as";
+import { ReportProblem } from "./ReportProblem";
 
 const PATHS: Record<string, string> = {
   changes: "M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5",
@@ -94,6 +95,7 @@ export function AppShell({ viewer, viewers, counts, children }: { viewer: Viewer
           );
         })}
         <div className="rail-spacer" />
+        <ReportProblem />
         <div className="rail-user" ref={railRef}>
           <button type="button" className={`rail-item${menu === "rail" ? " on" : ""}`} onClick={() => setMenu(menu === "rail" ? false : "rail")} aria-haspopup="menu" aria-expanded={menu === "rail"}>
             <span className="rail-avatar"><Avatar v={viewer} /><span className="online" /></span>

@@ -8,6 +8,7 @@ import type { BadgeKey } from "@/lib/nav";
 import { db } from "@/db/client";
 import { item, ownerSuggestion } from "@/db/schema";
 import { toReview } from "@/eval/owner-golden";
+import { openReportCount } from "@/lib/reports";
 
 export const metadata = { title: "Competitor monitor" };
 
@@ -20,7 +21,8 @@ async function badgeCounts(viewer: Viewer): Promise<Partial<Record<BadgeKey, num
     const [e] = viewer.role === "builder"
       ? await d.select({ n: sql<number>`count(*)` }).from(item).where(inArray(item.status, ["held", "failed"]))
       : [{ n: 0 }];
-    return { review, suggestions: Number(s?.n ?? 0), errors: Number(e?.n ?? 0) };
+    const reports = viewer.role === "builder" ? await openReportCount(d) : 0;
+    return { review, suggestions: Number(s?.n ?? 0), errors: Number(e?.n ?? 0), reports };
   } catch {
     return {};
   }
