@@ -30,6 +30,9 @@ envVarGroups:
         sync: false
       - key: FEEDBACK_SECRET
         generateValue: true
+      # Signs the per-person Claude connector tokens. Rotating it revokes every token. Unset = connector off.
+      - key: MCP_SECRET
+        generateValue: true
       - key: OWNER_PASSWORD
         sync: false
       - key: OPS_PASSWORD

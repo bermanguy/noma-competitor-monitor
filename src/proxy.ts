@@ -4,7 +4,7 @@ import { BUILDER, VIEW_AS_COOKIE, isBuilderPath } from "@/lib/view-as";
 /**
  * Two surfaces, two passwords. The owner password opens the owner surface (feed, settings); the
  * builder password (OPS_PASSWORD) opens everything. Which role the pages show is picked with "View as". Both use one sign-in realm, so whoever signs in once can move
- * between the pages without being asked again. The canary page, feedback links and the health check are public.
+ * between the pages without being asked again. The canary page, feedback links and the health check are public. The Claude connector (/api/mcp) checks its own per-person token.
  */
 export function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
@@ -33,5 +33,5 @@ function viewAs(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|canary|feedback|api/health|favicon|icon|logo\.png).*)"],
+  matcher: ["/((?!_next|canary|feedback|api/health|api/mcp|\.well-known|favicon|icon|logo\.png).*)"],
 };
