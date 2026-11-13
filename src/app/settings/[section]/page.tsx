@@ -3,8 +3,7 @@ import { localDate, localDateTime, localDay, localShort } from "@/lib/time";
 import { db } from "@/db/client";
 import { competitor, goldenItem, ownerSuggestion, source, team, topic } from "@/db/schema";
 import { GoldenItem } from "@/eval/golden";
-import { sourceHealth } from "@/pipeline/health";
-import { archiveCompetitorAction, addPerson, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removePerson, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, tryLensAction, updateTeam, updateTopic, decideTeamEdit, setTeamAnswer } from "../actions";
+import { addPerson, approveSuggestion, dismissSuggestionAction, removePerson, restoreOwnerTextAction, saveOwnerText, tryLensAction, updateTeam, decideTeamEdit, setTeamAnswer } from "../actions";
 import { toReview } from "@/eval/owner-golden";
 import { currentViewer } from "@/lib/viewer";
 import { BUILDER, ROLE_HINT, ROLE_NAME, canEditTeam, canManagePeople, type Role } from "@/lib/view-as";
@@ -16,7 +15,9 @@ import { TeamEditCard } from "@/components/TeamEditCard";
 import { editToShow, verdictFor } from "@/eval/team-edit";
 import { examItems, goldenAnswers } from "@/eval/owner-golden";
 import type { EvalResult } from "@/eval/run";
-import { AddCompetitorWizard } from "@/components/AddCompetitorWizard";
+import { CompetitorsSetup } from "@/components/setup/CompetitorsSetup";
+import { TopicsSetup } from "@/components/setup/TopicsSetup";
+import { ReviewSetup } from "@/components/setup/ReviewSetup";
 import { getOwnerTexts, OWNER_TEXTS, ownerTextHistoryFor, type OwnerTextKey } from "@/lib/owner-text";
 import { notFound } from "next/navigation";
 import { SETTINGS_SECTIONS, subLabel, type SettingsSection } from "@/lib/nav";
@@ -38,14 +39,12 @@ const LEAD: Record<SettingsSection, string> = {
 };
 const TEXT_KEY: Partial<Record<SettingsSection, OwnerTextKey>> = { company: "company", levels: "levels", pricing: "page.pricing" };
 
-const HEALTH_TEXT = { healthy: "Healthy", failing: "Needs attention", quiet: "Unusually quiet", new: "Starting" } as const;
-
-export default async function Settings({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ added?: string; error?: string; team?: string }> }) {
+export default async function Settings({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ added?: string; error?: string; team?: string; show?: string }> }) {
   const { section: raw } = await params;
   if (!(SETTINGS_SECTIONS as readonly string[]).includes(raw)) notFound();
   const section = raw as SettingsSection;
   const on = (s: SettingsSection) => section === s;
-  const { added, error, team: teamParam } = await searchParams;
+  const { added, error, team: teamParam, show: showParam } = await searchParams;
   const d = db();
   const allComps = await d.select().from(competitor).orderBy(competitor.name);
   const comps = allComps.filter((c) => !c.archivedAt);
@@ -61,7 +60,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
     .map((r) => ({ ...r, votes: r.votes.filter((v) => canEditTeam(viewer, v.team)) }))
     .filter((r) => r.votes.length > 0);
   // Exam items the owners already added; the same form updates the answer.
-  const inExam = (await d.select().from(goldenItem).orderBy(desc(goldenItem.createdAt))).map((r) => ({ itemId: r.fromItemId, g: GoldenItem.parse(r.data) }));
+  const inExam = (await d.select().from(goldenItem).orderBy(desc(goldenItem.createdAt))).map((r) => ({ itemId: r.fromItemId, g: GoldenItem.parse(r.data), at: r.createdAt }));
   const people = on("people") ? await allViewers(d) : [];
   // The owner previews their own team; the builder picks one.
   const previewTeam = on("preview") ? teams.find((t) => t.key === (viewer.role === "builder" ? teamParam : viewer.team)) ?? teams[0] : undefined;
@@ -90,174 +89,14 @@ export default async function Settings({ params, searchParams }: { params: Promi
         <div className="notice"><strong>Noma&apos;s site changed.</strong> {pending.length === 1 ? "One suggested update is" : `${pending.length} suggested updates are`} waiting for your approval. <a href="/settings/suggestions">Review</a></div>
       )}
 
-      {on("review") && review.length === 0 && <div className="card muted">Nothing to review. When a team marks an item not useful in Slack, it shows up here.</div>}
-      {on("review") && review.length > 0 && (
-        <>
-          <p className="muted">&quot;Add to the golden set&quot; saves your answer as a test case, so every later eval run checks the judge against it.</p>
-          {review.map((r) => (
-            <form key={r.itemId} action={addToExamAction} className="card">
-              <input type="hidden" name="itemId" value={r.itemId} />
-              <div className="muted">{r.competitor}{r.isTest && <span className="chip lv-log" style={{ marginLeft: 8 }}>test page</span>}</div>
-              <strong><a href={r.url} target="_blank" rel="noreferrer">{r.title}</a></strong>
-              {r.votes.map((v, n) => (
-                <div key={n} className="team">
-                  <span className={`chip lv-${v.level}`}>{teams.find((t) => t.key === v.team)?.name ?? v.team} got {v.level}</span>{" "}
-                  <span className="muted">Judge: {v.why}</span>
-                  <blockquote>Not useful{v.reason ? `: ${v.reason}` : " (no reason given)"}</blockquote>
-                </div>
-              ))}
-              <div className="row" style={{ marginTop: 10 }}>
-                {teams.map((t) => (
-                  <label key={t.key}>{t.name}{" "}
-                    <select name={`level:${t.key}`} defaultValue={r.levels[t.key] ?? "none"} style={{ width: "auto" }}>
-                      {["alert", "digest", "log", "none"].map((l) => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                  </label>
-                ))}
-              </div>
-              <input type="text" name="note" placeholder="Why these levels (optional, kept with the test case)" style={{ marginTop: 8 }} />
-              <button style={{ marginTop: 8 }}>Add to the golden set</button>
-            </form>
-          ))}
-        </>
+      {on("review") && (
+        <ReviewSetup open={review} done={inExam} teams={teams} show={showParam === "done" ? "done" : "open"}
+          company={(name) => allComps.find((c) => c.name === name)} />
       )}
 
-      {on("review") && inExam.length > 0 && (
-        <details className="card" style={{ marginTop: 12 }}>
-          <summary><strong>In the golden set from team votes ({inExam.length})</strong> <span className="muted">· change an answer you already added</span></summary>
-          {inExam.map(({ itemId, g }) => (
-            <form key={itemId} action={addToExamAction} style={{ borderTop: "1px solid var(--line)", paddingTop: 10, marginTop: 10 }}>
-              <input type="hidden" name="itemId" value={itemId} />
-              <div className="muted">{g.competitor}</div>
-              <strong><a href={g.url} target="_blank" rel="noreferrer">{g.title ?? g.url}</a></strong>
-              <div className="row" style={{ marginTop: 8 }}>
-                {teams.map((t) => (
-                  <label key={t.key}>{t.name}{" "}
-                    <select name={`level:${t.key}`} defaultValue={(g.expected as Record<string, string> | null)?.[t.key] ?? "none"} style={{ width: "auto" }}>
-                      {["alert", "digest", "log", "none"].map((l) => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                  </label>
-                ))}
-              </div>
-              <input type="text" name="note" defaultValue={g.note} placeholder="Why these levels" style={{ marginTop: 8 }} />
-              <button className="secondary" style={{ marginTop: 8 }}>Update the answer</button>
-            </form>
-          ))}
-        </details>
-      )}
+      {on("competitors") && <CompetitorsSetup d={d} comps={comps} removed={removed} srcs={srcs} canFix={viewer.role === "builder"} />}
 
-      {on("competitors") && (<>
-      <AddCompetitorWizard />
-      <table>
-        <thead><tr><th>Competitor</th><th>What we watch</th><th>Status</th><th></th></tr></thead>
-        <tbody>
-          {comps.map((c) => {
-            const mine = srcs.filter((s) => s.competitorId === c.id);
-            const worst = mine.map((s) => sourceHealth(s).health).sort((a, b) => rank(a) - rank(b))[0] ?? "new";
-            return (
-              <tr key={c.id} style={{ opacity: c.active ? 1 : 0.5 }}>
-                <td><strong>{c.name}</strong><div className="muted">{c.domain}</div></td>
-                <td className="muted">{mine.map((s) => s.label + (s.pageType === "pricing" ? " (pricing)" : "")).join(", ") || "nothing found yet"}</td>
-                <td>
-                  <span className={`chip h-${worst}`}>{c.active ? HEALTH_TEXT[worst] : "Paused"}</span>
-                  {c.active && (worst === "failing" || worst === "quiet") && (() => {
-                    const bad = mine.filter((s) => sourceHealth(s).health === worst).map((s) => s.label).join(", ");
-                    return (
-                      <div className="muted" style={{ marginTop: 4 }}>
-                        {worst === "failing" ? `${bad}: we can't read it right now.` : `${bad}: no new posts for a while.`}{" "}
-                        {viewer.role === "builder"
-                          ? <a href="/ops/sources">Fix in Builder › Sources</a>
-                          : "The Builder was alerted in Slack. Nothing for you to do."}
-                      </div>
-                    );
-                  })()}
-                </td>
-                <td>
-                  <form action={setCompetitorActive}>
-                    <input type="hidden" name="id" value={c.id} />
-                    <input type="hidden" name="active" value={c.active ? "0" : "1"} />
-                    <button className="secondary">{c.active ? "Pause" : "Resume"}</button>
-                  </form>
-                  <form action={archiveCompetitorAction} style={{ marginTop: 4 }}>
-                    <input type="hidden" name="id" value={c.id} />
-                    <input type="hidden" name="archived" value="1" />
-                    <button className="secondary">Remove</button>
-                  </form>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {removed.length > 0 && (
-        <div className="muted" style={{ marginTop: 8 }}>
-          Removed (history kept):{" "}
-          {removed.map((c) => (
-            <form key={c.id} action={archiveCompetitorAction} style={{ display: "inline", marginRight: 8 }}>
-              <input type="hidden" name="id" value={c.id} />
-              <input type="hidden" name="archived" value="0" />
-              {c.name} <button className="secondary">Restore</button>
-            </form>
-          ))}
-        </div>
-      )}
-      <div className="card" style={{ marginTop: 12 }}>
-        <form action={addWatchedPage} className="row">
-          <select name="competitorId" style={{ width: "auto" }}>{comps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <div style={{ flex: 2 }}><input type="text" name="url" placeholder="Page to watch, e.g. https://example.com/pricing" required /></div>
-          <div style={{ flex: 1 }}><input type="text" name="label" placeholder="Name, e.g. Pricing" /></div>
-          <select name="pageType" style={{ width: "auto" }}>
-            <option value="general">General page</option>
-            <option value="pricing">Pricing page</option>
-          </select>
-          <button>Watch page</button>
-        </form>
-        <div className="muted" style={{ marginTop: 6 }}>General pages report meaningful wording changes. Pricing pages compare each plan's monthly and yearly price and features, and report exactly what changed.</div>
-      </div>
-
-      </>)}
-
-      {on("topics") && (<>
-      <table>
-        <thead><tr><th>Topic</th><th>Matters to</th><th></th></tr></thead>
-        <tbody>
-          {topics.map((t) => (
-            <tr key={t.id}>
-              <td>
-                <details>
-                  <summary><strong>{t.name}</strong><div className="muted">{t.description}</div></summary>
-                  <form action={updateTopic} style={{ display: "grid", gap: 6, marginTop: 8 }}>
-                    <input type="hidden" name="id" value={t.id} />
-                    <input type="text" name="name" defaultValue={t.name} required />
-                    <input type="text" name="description" defaultValue={t.description} />
-                    <div className="row">
-                      {teams.map((x) => <label key={x.key}><input type="checkbox" name="teams" value={x.key} defaultChecked={t.teamKeys.includes(x.key)} /> {x.name}</label>)}
-                      <button className="secondary" style={{ marginLeft: "auto" }}>Save topic</button>
-                    </div>
-                  </form>
-                </details>
-              </td>
-              <td>{t.teamKeys.map((k) => teams.find((x) => x.key === k)?.name ?? k).join(", ")}</td>
-              <td><form action={removeTopic}><input type="hidden" name="id" value={t.id} /><button className="secondary">Remove</button></form></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="card" style={{ marginTop: 12 }}>
-        <form action={addTopic}>
-          <div className="grid2">
-            <input type="text" name="name" placeholder="Topic, e.g. Browser agents" required />
-            <input type="text" name="description" placeholder="In a few words, what counts" />
-          </div>
-          <div className="row" style={{ marginTop: 8 }}>
-            <span className="muted">Matters to:</span>
-            {teams.map((t) => <label key={t.key}><input type="checkbox" name="teams" value={t.key} /> {t.name}</label>)}
-            <button style={{ marginLeft: "auto" }}>Add topic</button>
-          </div>
-        </form>
-      </div>
-
-      </>)}
+      {on("topics") && <TopicsSetup d={d} topics={topics} teams={teams} teamFilter={teams.some((t) => t.key === teamParam) ? teamParam : undefined} />}
 
       {on("suggestions") && pending.length === 0 && <div className="card muted">No suggestions waiting. We check Noma&apos;s site on every run.</div>}
       {on("suggestions") && pending.map((s) => (
@@ -430,8 +269,4 @@ export default async function Settings({ params, searchParams }: { params: Promi
       )}
     </>
   );
-}
-
-function rank(h: string) {
-  return ({ failing: 0, quiet: 1, new: 2, healthy: 3 } as Record<string, number>)[h] ?? 4;
 }
