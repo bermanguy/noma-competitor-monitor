@@ -90,3 +90,33 @@ describe("preview next digest", () => {
     expect(t!.lens).toBe("Positioning and category language.");
   });
 });
+
+describe("test pages stay out of the digest", () => {
+  it("leaves canary items out of the next digest and skips a digest that would hold only them", async () => {
+    const { db, add } = await withItems();
+    const j = await add(1, "Canary: new agent feature", "digest");
+    const { item: itemT } = await import("../src/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const [jj] = await db.select().from(judgment).where(eq(judgment.id, j.id));
+    await db.update(itemT).set({ isCanary: true }).where(eq(itemT.id, jj!.itemId));
+    const { planDelivery } = await import("../src/pipeline/deliver");
+    expect((await planDelivery(db)).plan.digest.get("marketing") ?? []).toEqual([]);
+    expect((await previewDigest(db, "marketing")).mode).toBe("empty");
+
+    await add(2, "Acme launches agents", "digest");
+    const p = await previewDigest(db, "marketing");
+    expect(p.storyCount).toBe(1);
+    expect(JSON.stringify(p.parts)).not.toContain("Canary");
+  });
+
+  it("still sends an urgent canary change on its own, so the chain is tested end to end", async () => {
+    const { db, add } = await withItems();
+    const j = await add(1, "Canary: pricing moved", "alert");
+    const { item: itemT } = await import("../src/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const [jj] = await db.select().from(judgment).where(eq(judgment.id, j.id));
+    await db.update(itemT).set({ isCanary: true }).where(eq(itemT.id, jj!.itemId));
+    const { planDelivery } = await import("../src/pipeline/deliver");
+    expect((await planDelivery(db)).plan.alerts.get("marketing")).toEqual([j.id]);
+  });
+});

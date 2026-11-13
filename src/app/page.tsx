@@ -28,6 +28,8 @@ function LevelIcon({ level }: { level: Level }) {
   if (level === "digest") return <svg className="lv-i" viewBox="0 0 16 16" aria-hidden><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor" /></svg>;
   return <svg className="lv-i" viewBox="0 0 16 16" aria-hidden><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="2.4 2" /></svg>;
 }
+const SLACK_PATH = "M5 15a2 2 0 1 1-2-2h2zm1 0a2 2 0 1 1 4 0v5a2 2 0 1 1-4 0zM9 5a2 2 0 1 1 2-2v2zm0 1a2 2 0 1 1 0 4H4a2 2 0 1 1 0-4zm10 3a2 2 0 1 1 2 2h-2zm-1 0a2 2 0 1 1-4 0V4a2 2 0 1 1 4 0zm-3 10a2 2 0 1 1-2 2v-2zm0-1a2 2 0 1 1 0-4h5a2 2 0 1 1 0 4z";
+const SlackMark = () => <svg className="slack-mark" viewBox="0 0 24 24" aria-hidden><path d={SLACK_PATH} /></svg>;
 const LevelTag = ({ level }: { level: Level }) => <span className={`lvl lvl-${level}`}><LevelIcon level={level} />{LEVEL_NAME[level]}</span>;
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -81,6 +83,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
     })
     .filter((x) => x.i.status !== "judged" || x.top !== "none")
     .filter((x) => x.i.firstSeenAt >= since)
+    .filter((x) => !member || !x.i.isCanary)
     .filter((x) => !sp.company || String(x.c.id) === sp.company)
     .filter((x) => !sp.topic || x.topics.includes(sp.topic))
     .filter((x) => !q || `${x.i.title ?? ""} ${x.summary ?? ""} ${x.c.name}`.toLowerCase().includes(q));
@@ -89,7 +92,8 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
   const visible = base.filter((x) => !level || x.top === level);
 
   // Options for the menus, from the rows in the current team and date range.
-  const inRange = rows.filter((x) => x.i.firstSeenAt >= since);
+  // A member never sees test pages; the Builder and owners do, labelled "Test page".
+  const inRange = rows.filter((x) => x.i.firstSeenAt >= since && (!member || !x.i.isCanary));
   const companies = [...new Map(inRange.map((x) => [x.c.id, x.c])).values()].sort((a, b) => a.name.localeCompare(b.name));
   const topicCounts = new Map<string, number>();
   for (const x of base) for (const t of x.topics) topicCounts.set(t, (topicCounts.get(t) ?? 0) + 1);
@@ -114,7 +118,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
       </div>
       {member ? (
         <div className="slack-note">
-          <svg viewBox="0 0 24 24" aria-hidden><path d="M5 15a2 2 0 1 1-2-2h2zm1 0a2 2 0 1 1 4 0v5a2 2 0 1 1-4 0zM9 5a2 2 0 1 1 2-2v2zm0 1a2 2 0 1 1 0 4H4a2 2 0 1 1 0-4zm10 3a2 2 0 1 1 2 2h-2zm-1 0a2 2 0 1 1-4 0V4a2 2 0 1 1 4 0zm-3 10a2 2 0 1 1-2 2v-2zm0-1a2 2 0 1 1 0-4h5a2 2 0 1 1 0 4z" /></svg>
+          <svg viewBox="0 0 24 24" aria-hidden><path d={SLACK_PATH} /></svg>
           <div>
             <strong>Your updates come to Slack.</strong> Urgent changes arrive right away and the rest in one daily digest, in your team&apos;s channel. This page keeps everything in one place, written for {teamName}.
             {owners.length > 0 && <span className="muted"> {owners.map((o) => o.name).join(" and ")} {owners.length === 1 ? "decides" : "decide"} what {teamName} gets.</span>}
@@ -191,16 +195,23 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
                         const slack = s ? (s.kind === "alert" ? `Sent to Slack as an alert, ${when(s.at)}` : `In the ${s.at.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })} digest`)
                           : j.level === "none" || j.level === "log" ? "Not sent to Slack"
                           : !j.evidenceOk ? "Not sent: a quote was not found in the source"
+                          : x.i.isCanary && j.level === "digest" ? "Not sent: test pages stay out of the digest"
                           : t.noise === "quiet" && j.level === "digest" ? `Not sent: ${t.name} gets urgent changes only`
                           : x.i.isBackfill && j.level === "alert" ? "Not sent as an alert: published before monitoring started"
                           : "Not sent yet";
                         return (
                           <div key={t.key} className={`read${t.key === teamKey ? " me" : ""}`}>
-                            <div className="read-h"><strong>{t.name}</strong>{j.level !== "none" ? <LevelTag level={j.level} /> : <span className="muted">Not relevant</span>}</div>
+                            {/* A member sees one box, for their own team, so it says what it is rather than naming the team. */}
+                            <div className="read-h"><strong>{member ? `Why it matters to ${t.name}` : t.name}</strong>{j.level !== "none" ? <LevelTag level={j.level} /> : <span className="muted">Not relevant</span>}</div>
                             <p className={j.level === "none" || j.level === "log" ? "dim" : ""}>{j.why}</p>
+                            {member && j.level !== "none" && j.evidence.length > 0 && <div className="read-l">From the source</div>}
                             {j.level !== "none" && j.evidence.slice(0, 2).map((qt, k) => <blockquote key={k}>“{qt}”</blockquote>)}
-                            {j.topics.length > 0 && <div className="read-topics">{j.topics.join(" · ")}</div>}
-                            <div className="read-slack">{slack}</div>
+                            {j.topics.length > 0 && (member
+                              ? <div className="read-chips">{j.topics.map((tp) => <span key={tp}>{tp}</span>)}</div>
+                              : <div className="read-topics">{j.topics.join(" · ")}</div>)}
+                            {member
+                              ? <div className="read-slack-m"><SlackMark /><strong>Slack</strong> · {slack}</div>
+                              : <div className="read-slack">{slack}</div>}
                             {member && (j.level === "alert" || j.level === "digest") && (
                               <div className="read-vote">Was this useful? <a href={feedbackUrl(j.id, true)}>👍 Useful</a><a href={feedbackUrl(j.id, false)}>👎 Not useful</a></div>
                             )}

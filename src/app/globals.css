@@ -242,6 +242,13 @@ body .content > main > .people-row { border:0; margin-bottom:10px; }
 .trial-cols p { margin:4px 0 0; color:var(--muted); }
 .trial-l { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:3px; }
 
+/* A member's single box: why it matters, the quotes, and what happened in Slack. */
+.read-l { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-top:10px; }
+.read-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.read-chips span { font-size:12px; background:#f1f4f8; border-radius:99px; padding:1px 9px; color:#3d4757; }
+.read-slack-m { display:flex; align-items:center; gap:7px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line); font-size:12.5px; color:#3d4757; }
+.slack-mark { width:15px; height:15px; fill:#611f69; flex:none; }
+
 /* Builder overview: metric tiles and alert rules */
 .mon-summary.mon-ok { background:#effaf3; border-color:#bfe6cc; }
 .mon-summary.mon-warn { background:#fff8ec; border-color:#f4d9a8; }

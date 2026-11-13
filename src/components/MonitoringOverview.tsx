@@ -68,7 +68,7 @@ export function MonitoringOverview({ metrics, recentAlerts }: { metrics: Metric[
           <div className="row"><button>Save rule</button><button className="secondary">Send test alert</button></div>
         </fieldset>
       </details>
-      <p className="muted">Next step: send these numbers to Grafana Cloud for history and on-call routing; see the design doc, section 6.</p>
+      <p className="muted">Next step: send these numbers to Grafana Cloud for history and on-call routing; see the design doc, section 7.</p>
     </>
   );
 }

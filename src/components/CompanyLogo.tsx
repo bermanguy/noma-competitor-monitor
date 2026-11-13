@@ -25,14 +25,18 @@ function CanaryIcon({ size }: { size: number }) {
 
 /** The company's own site icon, or a coloured letter tile when the site has none. The canary gets its own bird. */
 export function CompanyLogo({ name, domain, size = 28, canary }: { name: string; domain: string; size?: number; canary?: boolean }) {
-  const [failed, setFailed] = useState(false);
+  // Many sites (Webflow, Framer) have no /favicon.ico and declare their icon in the page instead, so a
+  // missing favicon falls back to Google's icon service, which reads the page. Then a letter tile.
+  const [step, setStep] = useState(0);
+  const failed = step >= 2;
+  const next = () => setStep((n) => n + 1);
   const img = useRef<HTMLImageElement>(null);
   // The icon can fail to load before React attaches onError (the page is rendered on the server), and then
   // onError never fires and the browser shows its broken-image box. Check once on mount to catch that case.
   useEffect(() => {
     const el = img.current;
-    if (el?.complete && el.naturalWidth < 8) setFailed(true);
-  }, []);
+    if (el?.complete && el.naturalWidth < 8) next();
+  }, [step]);
   if (canary) return <CanaryIcon size={size} />;
   const color = TILE[[...name].reduce((n, ch) => n + ch.charCodeAt(0), 0) % TILE.length];
   const style = { width: size, height: size, borderRadius: size / 4, fontSize: size * 0.45 };
@@ -41,7 +45,8 @@ export function CompanyLogo({ name, domain, size = 28, canary }: { name: string;
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img ref={img} className="co-logo" style={style} src={`https://${domain}/favicon.ico`} alt="" onError={() => setFailed(true)}
-      onLoad={(e) => { if (e.currentTarget.naturalWidth < 8) setFailed(true); }} />
+    <img ref={img} className="co-logo" style={style} key={step} src={step === 0 ? `https://${domain}/favicon.ico` : `https://www.google.com/s2/favicons?domain=${domain}&sz=64`} alt="" onError={next}
+      // Google answers an unknown site with a 16px globe: treat that as no icon.
+      onLoad={(e) => { if (e.currentTarget.naturalWidth < (step === 0 ? 8 : 17)) next(); }} />
   );
 }
