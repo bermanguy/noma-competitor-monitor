@@ -1,5 +1,5 @@
 import {
-  pgTable, text, integer, timestamp, boolean, jsonb, uniqueIndex, index, serial, real,
+  pgTable, customType, text, integer, timestamp, boolean, jsonb, uniqueIndex, index, serial, real,
 } from "drizzle-orm/pg-core";
 
 /** A company we watch. Created by the business owner. */
@@ -322,3 +322,32 @@ export const goldenAnswer = pgTable("golden_answer", {
   setBy: text("set_by").notNull(),
   setAt: timestamp("set_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("golden_answer_uq").on(t.goldenId, t.teamKey)]);
+
+export type ProblemReportStatus = "open" | "fixed";
+
+/** Raw bytes. postgres-js returns a Buffer and PGlite a Uint8Array; both are Uint8Array. */
+const bytes = customType<{ data: Uint8Array; driverData: Uint8Array }>({ dataType: () => "bytea" });
+
+/**
+ * A problem someone reported from the app's "Report a problem" button, with an optional screenshot
+ * or short video. The file lives in the row because the web service's disk is wiped on every deploy.
+ * Who reported it is whoever the page was viewed as, so the report says what that person could see.
+ */
+export const problemReport = pgTable("problem_report", {
+  id: serial("id").primaryKey(),
+  description: text("description").notNull(),
+  /** The page it was reported from, path and query. */
+  page: text("page").notNull(),
+  reporterKey: text("reporter_key").notNull(),
+  reporterName: text("reporter_name").notNull(),
+  reporterRole: text("reporter_role").notNull(),
+  reporterTeam: text("reporter_team"),
+  userAgent: text("user_agent"),
+  status: text("status").$type<ProblemReportStatus>().notNull().default("open"),
+  fileName: text("file_name"),
+  fileType: text("file_type"),
+  fileSize: integer("file_size"),
+  fileData: bytes("file_data"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  fixedAt: timestamp("fixed_at", { withTimezone: true }),
+}, (t) => [index("problem_report_status_idx").on(t.status)]);

@@ -3,7 +3,7 @@
  * so each page is named once. Owners never get the Builder item; the proxy also keeps them out of /ops.
  */
 export type RailKey = "changes" | "setup" | "builder";
-export type BadgeKey = "review" | "suggestions" | "errors";
+export type BadgeKey = "review" | "suggestions" | "errors" | "reports";
 
 export interface SubItem { key: string; label: string; icon?: string; badge?: BadgeKey }
 export interface SubGroup { label?: string; items: SubItem[] }
@@ -11,7 +11,7 @@ export interface RailItem { key: RailKey; label: string; href: string; builderOn
 
 export const SETTINGS_SECTIONS = ["review", "competitors", "topics", "company", "levels", "pricing", "teams", "suggestions", "people", "preview"] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
-export const OPS_SECTIONS = ["overview", "runs", "sources", "errors", "evals", "feedback", "spend", "canary"] as const;
+export const OPS_SECTIONS = ["overview", "runs", "sources", "errors", "reports", "evals", "feedback", "spend", "canary"] as const;
 export type OpsSection = (typeof OPS_SECTIONS)[number];
 
 export const RAIL: RailItem[] = [
@@ -37,7 +37,7 @@ export const RAIL: RailItem[] = [
   {
     key: "builder", label: "Builder", href: "/ops/overview", builderOnly: true,
     groups: [
-      { items: [{ key: "overview", label: "Overview" }, { key: "runs", label: "Runs" }, { key: "sources", label: "Sources" }, { key: "errors", label: "Not sent (errors)", badge: "errors" }] },
+      { items: [{ key: "overview", label: "Overview" }, { key: "runs", label: "Runs" }, { key: "sources", label: "Sources" }, { key: "errors", label: "Not sent (errors)", badge: "errors" }, { key: "reports", label: "Problem reports", badge: "reports" }] },
       { label: "Quality", items: [{ key: "evals", label: "Evals (golden set)" }, { key: "feedback", label: "Team feedback" }, { key: "spend", label: "Model spend" }] },
       { label: "Testing", items: [{ key: "canary", label: "Canary pages" }] },
       { label: "Access", items: [{ key: "connector", label: "Claude connector" }] },

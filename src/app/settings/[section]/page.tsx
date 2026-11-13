@@ -356,7 +356,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
                     <span className={`role-pill r-${p.role}`}>{ROLE_NAME[p.role]}</span>
                     <strong>{p.name}</strong><span className="muted">{p.title}</span>
                     {p.key === viewer.key && <span className="you">You</span>}
-                    <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                    <span style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "baseline" }}>
                       <a className="muted" href={`/view-as?as=${p.key}&next=/`}>View as</a>
                       {mine && p.key !== viewer.key && (
                         <form action={removePerson}><input type="hidden" name="key" value={p.key} /><button className="link-btn">Remove</button></form>

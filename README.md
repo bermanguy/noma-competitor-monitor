@@ -14,6 +14,10 @@ Watches competitors' blogs and key pages, judges every new post or quiet page ch
 | Owner | Web app: Changes, Settings | Add a competitor by domain, edit topics, team descriptions and noise level, review "not useful" votes |
 | Builder | Web app: Builder area (`/ops`) | Source health, runs, cost, the evals that grade the judge, and team feedback |
 
+## Demo mode
+
+There is no sign-in per person yet. Anyone with the link picks who they are from **View as**, to see each role: the Builder, an Owner (Marketing, Product or R&D) or a Member. The permissions behind each role are real and enforced on the server; only the sign-in is simulated. In production this would be company SSO, with each person's role and team set on the People page.
+
 ## Run it locally
 
 Needs Node 22 and a Postgres URL. Copy the variables listed in [docs/operations/setup.md](docs/operations/setup.md) into `.env`.
