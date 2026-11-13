@@ -71,6 +71,13 @@
       "when": 1794597029496,
       "tag": "0009_team_edit",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794606757472,
+      "tag": "0010_problem_report",
+      "breakpoints": true
     }
   ]
 }
