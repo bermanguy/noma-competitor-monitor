@@ -128,8 +128,8 @@ The heart of the video. Take it slowly.
   2. ▸ **Setup › Preview next digest › Product**. In "What Product cares about", add the sentence (have it on your clipboard):
      *New cloud regions and data residency options are Worth knowing, not Urgent.*
   3. ▸ Press **Try my edit on the last 5 changes**. Point at Straiker: Urgent → Worth knowing. The other rows don't move.
-  4. ▸ Press **Save**. The page reads "Checking your edit against 31 test posts…". *(Pause, cut in editing.)*
-  5. ▸ The result: *"Saved. Checked on 31 test posts: nothing got worse."* Point at Marketing and R&D, unchanged, and at Straiker now matching the answer key.
+  4. ▸ Press **Save and check**. The button turns to "Checking…" and the card reads "Checking your edit on 31 test posts..." with a progress bar. *(Pause, cut in editing.)*
+  5. ▸ The result: *"Saved and live. Checked on 31 test posts: nothing got worse for any team."* Point at the title line (it covers Marketing and R&D), then at *"✓ Better with your edit: Straiker for Product"*, then at *"It applies from the next check"*.
   6. ▸ Back to **Changes**, open the Straiker row: it still shows Urgent, as it was sent.
 - **Camera:** bottom left. Move it to top left for step 5 if the result panel is at the bottom.
 
@@ -145,9 +145,9 @@ The heart of the video. Take it slowly.
 >
 > *(pause while it runs)*
 >
-> ▸ Nothing got worse. Her wording only describes Product, and the check proves it didn't shift Marketing or R&D. Product can't break Marketing. And the Straiker post, which is one of the test posts, now gets the answer it should.
+> ▸ Saved and live. Nothing got worse, for any team. Her wording only describes Product, and the check proves it didn't shift Marketing or R&D. Product can't break Marketing. And the Straiker post, which is one of the test posts, is now marked better with her edit.
 >
-> If something had gotten worse, she'd see exactly which post. She could narrow her wording, or save anyway, and I'd just get a note.
+> If something had gotten worse, it wouldn't go live. She'd see exactly which test posts, and could narrow her wording, fix her own team's answer, or save anyway, and I'd just get a note.
 >
 > ▸ One more thing. This only changes what happens next. The alert Tamar got stays in the history, as it was sent. We don't rewrite the past. We improve the system from here on.
 >
@@ -217,7 +217,7 @@ The heart of the video. Take it slowly.
 Do a full dry run on the live site about an hour before, **without pressing Save in scene 6**.
 
 - **Straiker must still be an Urgent over-call.** Don't edit Product's description before recording. Try my edit re-judges only Product's 5 most recent changes, so check that Straiker is still among them. If newer posts pushed it out, tell the Builder thread before recording.
-- **The automatic check on Save** is being built tonight in the "Calibrate judge and rehearse the demo" thread. After it merges, try it once on a different post (that thread will name one), and match the on-screen wording in scene 6 to what the page actually says.
+- **The automatic check on Save** arrives with PR #57. After it merges, try it once on a different post or team (not Product's Straiker wording), so you've seen both the "Checking…" card and the result before recording.
 - **HiddenLayer.** If HiddenLayer is already being watched, remove it in Setup › Competitors before recording, and check that adding it again still walks through all three steps. If it doesn't, use another competitor's domain for scene 7.
 - **Cosmetic change for scene 3.** Find a row that reads "Not judged: cosmetic change" and note it. If there's none, change the canary page cosmetically from Builder › Canary pages beforehand.
 - **Ops alert for scene 8.** Scroll `#competitors-ops` to a real source failure and leave it there.

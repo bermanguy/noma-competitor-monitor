@@ -73,9 +73,9 @@ Now she saves. Saving runs a check by itself. The whole golden set, thirty-one r
 
 [ PAUSE while it runs ]
 
-Nothing got worse. Her wording only describes Product, and the check proves it didn't shift Marketing or R&D. Product can't break Marketing. And the Straiker post, which is one of the test posts, now gets the answer it should.
+Saved and live. Nothing got worse, for any team. Her wording only describes Product, and the check proves it didn't shift Marketing or R&D. Product can't break Marketing. And the Straiker post, which is one of the test posts, is now marked better with her edit.
 
-If something had gotten worse, she'd see exactly which post. She could narrow her wording, or save anyway, and I'd just get a note.
+If something had gotten worse, it wouldn't go live. She'd see exactly which test posts, and could narrow her wording, fix her own team's answer, or save anyway, and I'd just get a note.
 
 One more thing. This only changes what happens next. The alert Tamar got stays in the history, as it was sent. We don't rewrite the past. We improve the system from here on.
 
