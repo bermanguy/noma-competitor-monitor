@@ -29,7 +29,7 @@ export function TeamEditCard({ edit, verdict, items, teamNames, canAnswer, total
       <div className="card edit-check">
         <AutoRefresh everyMs={8000} />
         <strong>Checking your edit on {total} test posts…</strong>
-        <p className="muted">Started {localTime(edit.createdAt)}, about 2 minutes. Every test post is judged again with your new wording, for all three teams, and compared with the answers we agreed on. Nothing is live yet. You can leave this page: the result waits here.</p>
+        <p className="muted">Started {localTime(edit.createdAt)}, about 2 minutes. Every test post is judged again for your team with your new wording, and compared with the answers we agreed on. Other teams are judged in their own calls, so their answers stay as they are. Nothing is live yet. You can leave this page: the result waits here.</p>
         <div className="progress"><span /></div>
       </div>
     );
@@ -96,7 +96,7 @@ export function TeamEditCard({ edit, verdict, items, teamNames, canAnswer, total
       ) : (
         <>
           <strong>Not saved yet: your edit would make {blocking.length} test post{blocking.length === 1 ? "" : "s"} worse.</strong>
-          <p className="muted">We judged all {total} test posts again with your new wording. These came out further from the answer key than with today&apos;s wording.{verdict.blockingTeams.some((t) => t !== edit.teamKey) ? ` One judge reads all three team descriptions together, so ${team}'s wording can move another team's answers too. That's why every team is checked.` : ""}</p>
+          <p className="muted">We judged all {total} test posts again with your new wording. These came out further from the answer key than with today&apos;s wording.</p>
           <div className="edit-rows">{table(blocking)}</div>
         </>
       )}

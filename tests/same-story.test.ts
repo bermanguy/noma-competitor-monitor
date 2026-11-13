@@ -25,15 +25,24 @@ describe("same story", () => {
     expect(await judgeItem({} as never, undefined, input)).toMatchObject({ sameStoryAs: null, whatsNew: null });
   });
 
-  it("maps team names to keys and asks again when a team is left out", async () => {
-    const two = { ...input, earlier: [], teams: [{ key: "rnd", name: "R&D", lens: "t" }, { key: "product", name: "Product", lens: "p" }] };
+  it("judges each team in its own call that holds only that team's description", async () => {
+    const two = { ...input, earlier: [], teams: [{ key: "rnd", name: "R&D", lens: "RND-LENS" }, { key: "product", name: "Product", lens: "PRODUCT-LENS" }] };
     const j = (team: string) => ({ team, level: "digest", why: "w", evidence: [], topics: [] });
     modelReply.mockReset();
     modelReply.mockResolvedValueOnce({ summary: "s", sameStoryAs: null, whatsNew: null, judgments: [j("R&D")] })
-      .mockResolvedValueOnce({ summary: "s", sameStoryAs: null, whatsNew: null, judgments: [j("rnd"), j("Product")] });
+      // Product's first answer leaves its team out, so it is asked once more.
+      .mockResolvedValueOnce({ summary: "s", sameStoryAs: null, whatsNew: null, judgments: [] })
+      .mockResolvedValueOnce({ summary: "s", sameStoryAs: null, whatsNew: null, judgments: [j("Product")] });
     const r = await judgeItem({} as never, undefined, two);
-    expect(modelReply).toHaveBeenCalledTimes(2);
+    expect(modelReply).toHaveBeenCalledTimes(3);
     expect(r.judgments.map((x) => x.team)).toEqual(["rnd", "product"]);
+    const prompts = modelReply.mock.calls.map((c) => ((c[0] as { user: string[] }).user).join("\n"));
+    expect(prompts[0]).toContain("RND-LENS");
+    expect(prompts[0]).not.toContain("PRODUCT-LENS");
+    expect(prompts[2]).toContain("PRODUCT-LENS");
+    expect(prompts[2]).not.toContain("RND-LENS");
+    // The item text is the cached first part, the same for both teams.
+    expect((modelReply.mock.calls[0]![0] as { user: string[] }).user[0]).toBe((modelReply.mock.calls[2]![0] as { user: string[] }).user[0]);
   });
 
   it("groups a story's posts in the digest, with the original first", () => {

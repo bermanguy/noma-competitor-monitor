@@ -83,7 +83,7 @@ export interface LensTrial {
 
 /**
  * Re-judges this team's latest changes twice, side by side: once with the current description and
- * once with the draft, each with all teams in the call exactly as the pipeline does it. Comparing two
+ * once with the draft, each judged for this team exactly as the pipeline does it. Comparing two
  * fresh answers, not a fresh answer with an old stored one, keeps the judge's run-to-run variance and
  * any prompt changes since then from showing up as "your edit changed this". Saves nothing.
  */
@@ -91,8 +91,9 @@ export async function tryLens(db: DB, teamKey: string, draftLens: string, limit 
   const ctx = await loadContext(db);
   const t = ctx.teams.find((x) => x.key === teamKey);
   if (!t) throw new Error(`no team ${teamKey}`);
-  const current = ctx.teams.map((x) => ({ key: x.key, name: x.name, lens: x.lens }));
-  const draft = current.map((x) => (x.key === teamKey ? { ...x, lens: draftLens } : x));
+  // Each team is judged on its own, so only this team's call is needed.
+  const current = [{ key: t.key, name: t.name, lens: t.lens }];
+  const draft = [{ ...current[0]!, lens: draftLens }];
   const since = new Date(Date.now() - 30 * 864e5);
   const rows = await db
     .select({ i: item, c: competitor, pageType: source.pageType, j: judgment })
