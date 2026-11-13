@@ -28,6 +28,8 @@ function LevelIcon({ level }: { level: Level }) {
   if (level === "digest") return <svg className="lv-i" viewBox="0 0 16 16" aria-hidden><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor" /></svg>;
   return <svg className="lv-i" viewBox="0 0 16 16" aria-hidden><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="2.4 2" /></svg>;
 }
+const SLACK_PATH = "M5 15a2 2 0 1 1-2-2h2zm1 0a2 2 0 1 1 4 0v5a2 2 0 1 1-4 0zM9 5a2 2 0 1 1 2-2v2zm0 1a2 2 0 1 1 0 4H4a2 2 0 1 1 0-4zm10 3a2 2 0 1 1 2 2h-2zm-1 0a2 2 0 1 1-4 0V4a2 2 0 1 1 4 0zm-3 10a2 2 0 1 1-2 2v-2zm0-1a2 2 0 1 1 0-4h5a2 2 0 1 1 0 4z";
+const SlackMark = () => <svg className="slack-mark" viewBox="0 0 24 24" aria-hidden><path d={SLACK_PATH} /></svg>;
 const LevelTag = ({ level }: { level: Level }) => <span className={`lvl lvl-${level}`}><LevelIcon level={level} />{LEVEL_NAME[level]}</span>;
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -116,7 +118,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
       </div>
       {member ? (
         <div className="slack-note">
-          <svg viewBox="0 0 24 24" aria-hidden><path d="M5 15a2 2 0 1 1-2-2h2zm1 0a2 2 0 1 1 4 0v5a2 2 0 1 1-4 0zM9 5a2 2 0 1 1 2-2v2zm0 1a2 2 0 1 1 0 4H4a2 2 0 1 1 0-4zm10 3a2 2 0 1 1 2 2h-2zm-1 0a2 2 0 1 1-4 0V4a2 2 0 1 1 4 0zm-3 10a2 2 0 1 1-2 2v-2zm0-1a2 2 0 1 1 0-4h5a2 2 0 1 1 0 4z" /></svg>
+          <svg viewBox="0 0 24 24" aria-hidden><path d={SLACK_PATH} /></svg>
           <div>
             <strong>Your updates come to Slack.</strong> Urgent changes arrive right away and the rest in one daily digest, in your team&apos;s channel. This page keeps everything in one place, written for {teamName}.
             {owners.length > 0 && <span className="muted"> {owners.map((o) => o.name).join(" and ")} {owners.length === 1 ? "decides" : "decide"} what {teamName} gets.</span>}
@@ -199,11 +201,17 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
                           : "Not sent yet";
                         return (
                           <div key={t.key} className={`read${t.key === teamKey ? " me" : ""}`}>
-                            <div className="read-h"><strong>{t.name}</strong>{j.level !== "none" ? <LevelTag level={j.level} /> : <span className="muted">Not relevant</span>}</div>
+                            {/* A member sees one box, for their own team, so it says what it is rather than naming the team. */}
+                            <div className="read-h"><strong>{member ? `Why it matters to ${t.name}` : t.name}</strong>{j.level !== "none" ? <LevelTag level={j.level} /> : <span className="muted">Not relevant</span>}</div>
                             <p className={j.level === "none" || j.level === "log" ? "dim" : ""}>{j.why}</p>
+                            {member && j.level !== "none" && j.evidence.length > 0 && <div className="read-l">From the source</div>}
                             {j.level !== "none" && j.evidence.slice(0, 2).map((qt, k) => <blockquote key={k}>“{qt}”</blockquote>)}
-                            {j.topics.length > 0 && <div className="read-topics">{j.topics.join(" · ")}</div>}
-                            <div className="read-slack">{slack}</div>
+                            {j.topics.length > 0 && (member
+                              ? <div className="read-chips">{j.topics.map((tp) => <span key={tp}>{tp}</span>)}</div>
+                              : <div className="read-topics">{j.topics.join(" · ")}</div>)}
+                            {member
+                              ? <div className="read-slack-m"><SlackMark /><strong>Slack</strong> · {slack}</div>
+                              : <div className="read-slack">{slack}</div>}
                             {member && (j.level === "alert" || j.level === "digest") && (
                               <div className="read-vote">Was this useful? <a href={feedbackUrl(j.id, true)}>👍 Useful</a><a href={feedbackUrl(j.id, false)}>👎 Not useful</a></div>
                             )}
