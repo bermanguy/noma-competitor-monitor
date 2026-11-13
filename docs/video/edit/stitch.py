@@ -7,6 +7,7 @@ If you recorded a scene more than once, keep only the take you want under that n
     python3 stitch.py                 # everything -> out/demo.mp4
     python3 stitch.py --only 6        # just slide 6 + scene 6, to check one scene quickly
     python3 stitch.py --no-slides     # clips only
+    python3 stitch.py --music track.mp3   # background music: up on the slides, low under your voice
 
 Each clip is trimmed to just before your first word and just after your last word (silence at the
 ends is cut). To set the cut points by hand, put them in trims.json, in seconds:
@@ -85,6 +86,28 @@ def make_scene(src, start, end, dest):
     run(cmd)
 
 
+def add_music(video, music, parts, slides, high, low, dest):
+    """Mix a music bed under the video: `high` during each title slide, easing to `low` around it."""
+    ramp = 0.8
+    t, terms = 0.0, []
+    for p in parts:
+        d = duration(p)
+        if p in slides:  # 0 outside the slide, 1 on it, with a ramp on each side
+            s, e = t, t + d
+            terms.append(f"clip(min((t-{s - ramp:.2f})/{ramp},({e + ramp:.2f}-t)/{ramp}),0,1)")
+        t += d
+    total = t
+    shape = "+".join(terms) or "0"
+    gain = f"{low}+({high}-{low})*({shape})"
+    fade_out = 2.5
+    af = (f"[1:a]atrim=0:{total:.2f},asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo,"
+          f"volume='{gain}':eval=frame,afade=out:st={max(0, total - fade_out):.2f}:d={fade_out}[m];"
+          f"[0:a][m]amix=inputs=2:duration=first:normalize=0[a]")
+    run(["ffmpeg", "-y", "-i", str(video), "-stream_loop", "-1", "-i", str(music), "-filter_complex", af,
+         "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+         "-movflags", "+faststart", str(dest)])
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--clips", default=str(HERE / "clips"))
@@ -93,6 +116,9 @@ def main():
     ap.add_argument("--no-slides", action="store_true")
     ap.add_argument("--slide-seconds", type=float, default=3.0)
     ap.add_argument("--no-trim", action="store_true", help="keep each clip whole")
+    ap.add_argument("--music", help="a music file (mp3, m4a, wav); looped if shorter than the video")
+    ap.add_argument("--music-high", type=float, default=0.45, help="music volume on the title slides (1 = as recorded)")
+    ap.add_argument("--music-low", type=float, default=0.05, help="music volume while you talk; 0 turns it off")
     a = ap.parse_args()
 
     if not shutil.which("ffmpeg"):
@@ -104,7 +130,7 @@ def main():
     trims = json.loads(trims_file.read_text()) if trims_file.exists() else {}
 
     scenes = [a.only] if a.only else range(1, 10)
-    parts = []
+    parts, slides = [], []
     for n in scenes:
         src = next((clips / f"scene-{n:02d}{e}" for e in EXTS if (clips / f"scene-{n:02d}{e}").exists()), None)
         if not src:
@@ -114,6 +140,7 @@ def main():
             slide = work / f"{n:02d}a-slide.mp4"
             make_slide(HERE / "slides" / f"slide-{n:02d}.png", a.slide_seconds, slide)
             parts.append(slide)
+            slides.append(slide)
         total = duration(src)
         start, end = (0.0, total) if a.no_trim else speech_bounds(src, total)
         t = trims.get(str(n), {})
@@ -129,7 +156,10 @@ def main():
         out = out.with_name(f"scene-{a.only:02d}-check.mp4")
     listing = work / "list.txt"
     listing.write_text("".join(f"file '{p.resolve()}'\n" for p in parts))
-    run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(listing), "-c", "copy", "-movflags", "+faststart", str(out)])
+    joined = work / "joined.mp4" if a.music else out
+    run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(listing), "-c", "copy", "-movflags", "+faststart", str(joined)])
+    if a.music:
+        add_music(joined, Path(a.music), parts, set(slides), a.music_high, a.music_low, out)
     d = duration(out)
     print(f"\nDone: {out}  ({int(d // 60)}:{int(d % 60):02d})")
 

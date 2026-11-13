@@ -45,6 +45,14 @@ python3 stitch.py --only 6     # just slide 6 + scene 6, to check one scene fast
 
 It makes each title slide 3 seconds long, cuts the silence at both ends of each clip, matches the size and loudness, fades between parts, and joins everything in order: slide 1, scene 1, slide 2, scene 2, and so on. A missing clip is skipped, so you can check the video while you're still recording.
 
+**Music (optional).** Pick one calm instrumental track (no vocals, no strong beat), for example from the YouTube Audio Library or Pixabay Music, and add it with `--music`:
+
+```bash
+python3 stitch.py --music ~/Downloads/track.mp3
+```
+
+The music plays at normal volume on each title slide, eases down to almost nothing while you talk, and fades out at the end. Try `--music-low 0` for music on the slides only, or raise `--music-high` if it's too quiet on the slides. Make it once with music and once without, and keep the one that sounds better.
+
 If a cut lands in the wrong place, set it by hand in `trims.json`, in seconds from the start of the clip, then run it again:
 
 ```json
