@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { competitor, person, source, team, topic, type NoiseLevel, type PageType, type PersonRole } from "@/db/schema";
 import { discoverSources } from "@/pipeline/discover";
+import { archiveCompetitor, createCompetitor, normalizeDomain } from "@/lib/competitors";
 import { OWNER_TEXTS, restoreOwnerText, setOwnerText, type OwnerTextKey } from "@/lib/owner-text";
 import { applySuggestion, dismissSuggestion } from "@/pipeline/own-site";
 import { addToExam } from "@/eval/owner-golden";
@@ -17,23 +18,36 @@ import { tryLens, type LensTrial } from "@/pipeline/preview";
 
 export async function addCompetitor(form: FormData) {
   const name = String(form.get("name") ?? "").trim();
-  const domain = String(form.get("domain") ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
-  if (!name || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) redirect("/settings/competitors?error=" + encodeURIComponent("Enter a name and a website like example.com"));
+  const domain = normalizeDomain(String(form.get("domain") ?? ""));
+  if (!name || !domain) redirect("/settings/competitors?error=" + encodeURIComponent("Enter a name and a website like example.com"));
   const d = db();
   const [existing] = await d.select().from(competitor).where(eq(competitor.domain, domain));
-  if (existing) redirect("/settings/competitors?error=" + encodeURIComponent(`${existing.name} is already watched`));
+  if (existing && !existing.archivedAt) redirect("/settings/competitors?error=" + encodeURIComponent(`${existing.name} is already watched`));
 
   const found = await discoverSources(domain);
-  const [c] = await d.insert(competitor).values({ name, domain }).returning();
-  for (const s of found.sources) {
-    await d.insert(source).values({ competitorId: c!.id, kind: s.kind, url: s.url, label: s.label, linkPrefix: s.linkPrefix }).onConflictDoNothing();
-  }
+  const res = await createCompetitor(d, { name, domain, sources: found.sources, addedBy: "settings" });
+  if (!res.ok) redirect("/settings/competitors?error=" + encodeURIComponent(res.error));
   const summary = found.sources
     .map((s) => `${s.label}${s.sample.length ? ` (latest: ${s.sample.slice(0, 3).join("; ")})` : ""}`)
     .join(" · ");
-  const msg = `${name} added. Watching: ${summary || "nothing yet"}. ${found.notes.join(" ")} The first check runs within 3 hours; what's already published is recorded as history, and only new posts and changes are reported.`;
+  const msg = res.restored
+    ? `${name} is back, with its earlier history. Watching: ${summary || "nothing yet"}.`
+    : `${name} added. Watching: ${summary || "nothing yet"}. ${found.notes.join(" ")} The first check runs within 3 hours; what's already published is recorded as history, and only new posts and changes are reported.`;
   revalidatePath("/settings", "layout");
   redirect("/settings/competitors?added=" + encodeURIComponent(msg));
+}
+
+/** Remove (or bring back) a competitor. Nothing is deleted: its history stays in the database. */
+export async function archiveCompetitorAction(form: FormData) {
+  const id = Number(form.get("id"));
+  const archived = form.get("archived") === "1";
+  const [c] = await db().select().from(competitor).where(eq(competitor.id, id));
+  if (!c) redirect("/settings/competitors?error=" + encodeURIComponent("That competitor no longer exists"));
+  await archiveCompetitor(db(), id, archived);
+  revalidatePath("/", "layout");
+  redirect("/settings/competitors?added=" + encodeURIComponent(archived
+    ? `${c.name} removed. It is no longer checked and its changes are hidden; the history is kept, and adding ${c.domain} again brings it back.`
+    : `${c.name} is back and will be checked from the next run.`));
 }
 
 /** The owner adds one page to watch, and picks which skill reads it. */
