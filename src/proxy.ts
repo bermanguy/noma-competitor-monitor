@@ -33,5 +33,5 @@ function viewAs(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|canary|feedback|api/health|api/mcp|\.well-known|favicon|icon|logo\.png).*)"],
+  matcher: ["/((?!_next|canary|feedback|api/health|api/mcp|\.well-known|favicon|icon|apple-icon|logo\.png).*)"],
 };
