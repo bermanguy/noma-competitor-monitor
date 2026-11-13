@@ -3,7 +3,7 @@ import { db } from "@/db/client";
 import { competitor, goldenItem, ownerSuggestion, source, team, topic } from "@/db/schema";
 import { GoldenItem } from "@/eval/golden";
 import { sourceHealth } from "@/pipeline/health";
-import { addCompetitor, addPerson, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removePerson, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, tryLensAction, updateTeam, updateTopic } from "../actions";
+import { addCompetitor, archiveCompetitorAction, addPerson, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removePerson, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, tryLensAction, updateTeam, updateTopic } from "../actions";
 import { toReview } from "@/eval/owner-golden";
 import { currentViewer } from "@/lib/viewer";
 import { BUILDER, ROLE_HINT, ROLE_NAME, canEditTeam, canManagePeople, type Role } from "@/lib/view-as";
@@ -41,7 +41,9 @@ export default async function Settings({ params, searchParams }: { params: Promi
   const on = (s: SettingsSection) => section === s;
   const { added, error, team: teamParam } = await searchParams;
   const d = db();
-  const comps = await d.select().from(competitor).orderBy(competitor.name);
+  const allComps = await d.select().from(competitor).orderBy(competitor.name);
+  const comps = allComps.filter((c) => !c.archivedAt);
+  const removed = allComps.filter((c) => c.archivedAt);
   const srcs = await d.select().from(source).where(eq(source.active, true));
   const teams = await d.select().from(team).orderBy(team.id);
   const topics = await d.select().from(topic).where(eq(topic.active, true)).orderBy(topic.id);
@@ -157,12 +159,29 @@ export default async function Settings({ params, searchParams }: { params: Promi
                     <input type="hidden" name="active" value={c.active ? "0" : "1"} />
                     <button className="secondary">{c.active ? "Pause" : "Resume"}</button>
                   </form>
+                  <form action={archiveCompetitorAction} style={{ marginTop: 4 }}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <input type="hidden" name="archived" value="1" />
+                    <button className="secondary">Remove</button>
+                  </form>
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      {removed.length > 0 && (
+        <div className="muted" style={{ marginTop: 8 }}>
+          Removed (history kept):{" "}
+          {removed.map((c) => (
+            <form key={c.id} action={archiveCompetitorAction} style={{ display: "inline", marginRight: 8 }}>
+              <input type="hidden" name="id" value={c.id} />
+              <input type="hidden" name="archived" value="0" />
+              {c.name} <button className="secondary">Restore</button>
+            </form>
+          ))}
+        </div>
+      )}
       <div className="card" style={{ marginTop: 12 }}>
         <form action={addCompetitor} className="row">
           <div style={{ flex: 1 }}><input type="text" name="name" placeholder="Company name, e.g. HiddenLayer" required /></div>

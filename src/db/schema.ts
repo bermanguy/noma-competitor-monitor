@@ -9,6 +9,13 @@ export const competitor = pgTable("competitor", {
   domain: text("domain").notNull(),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  /**
+   * Removed by the owner: hidden from the feed, Setup and the Claude connector, and no longer checked.
+   * The row and its history stay, so a removal can be undone and old judgments keep their evidence.
+   */
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  /** Who added it: "settings", "wizard", or "claude:<person key>" when added through the Claude connector. */
+  addedBy: text("added_by"),
 }, (t) => [uniqueIndex("competitor_domain_uq").on(t.domain)]);
 
 export type SourceKind = "feed" | "listing" | "page";
@@ -251,3 +258,20 @@ export const person = pgTable("person", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   removedAt: timestamp("removed_at", { withTimezone: true }),
 }, (t) => [uniqueIndex("person_key_uq").on(t.key)]);
+
+/**
+ * Every call to the Claude connector (MCP server): who asked, which tool, with what arguments, and
+ * whether it worked. The audit trail for the one tool that writes (add_competitor).
+ */
+export const mcpCall = pgTable("mcp_call", {
+  id: serial("id").primaryKey(),
+  personKey: text("person_key").notNull(),
+  role: text("role").notNull(),
+  tool: text("tool").notNull(),
+  args: jsonb("args").notNull().default({}),
+  ok: boolean("ok").notNull(),
+  /** "read", "preview" or "write". */
+  effect: text("effect").notNull(),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("mcp_call_created_idx").on(t.createdAt)]);

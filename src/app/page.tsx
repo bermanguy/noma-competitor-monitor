@@ -1,4 +1,4 @@
-import { desc, eq, gte, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { competitor, delivery, item, judgment, team, type Level } from "@/db/schema";
 import { allViewers, currentViewer } from "@/lib/viewer";
@@ -56,7 +56,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
     .select({ i: item, c: competitor })
     .from(item)
     .innerJoin(competitor, eq(item.competitorId, competitor.id))
-    .where(inArray(item.status, statuses as never[]))
+    .where(and(inArray(item.status, statuses as never[]), isNull(competitor.archivedAt)))
     .orderBy(desc(item.firstSeenAt))
     .limit(300);
   const ids = rows.map((x) => x.i.id);

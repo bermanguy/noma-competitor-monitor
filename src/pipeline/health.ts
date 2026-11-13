@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { config } from "../config";
 import type { DB } from "../db/client";
 import { competitor, source, sourceRun } from "../db/schema";
@@ -26,7 +26,7 @@ export function sourceHealth(s: typeof source.$inferSelect, now = new Date()): {
 /** Posts one ops alert per problem per day. Run-level problems (a crash, the budget, failed deliveries) come in from the run. */
 export async function checkHealth(db: DB, runSummary: string, runProblems: string[] = []) {
   const { date } = localNow();
-  const rows = await db.select({ s: source, c: competitor }).from(source).innerJoin(competitor, eq(source.competitorId, competitor.id)).where(eq(source.active, true));
+  const rows = await db.select({ s: source, c: competitor }).from(source).innerJoin(competitor, eq(source.competitorId, competitor.id)).where(and(eq(source.active, true), isNull(competitor.archivedAt)));
   const problems: string[] = runProblems.map((p) => `• ${p}`);
   for (const { s, c } of rows) {
     const h = sourceHealth(s);
