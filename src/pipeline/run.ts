@@ -7,6 +7,7 @@ import { activeSources, collectSource } from "./collect";
 import { deliver } from "./deliver";
 import { checkHealth, heartbeat } from "./health";
 import { checkOwnSite, feedbackNotes } from "./own-site";
+import { fillMissingLogos } from "./logo";
 
 const STALE_MINUTES = 45;
 
@@ -46,6 +47,9 @@ export async function runPipeline(db: DB, trigger: string) {
   } catch (e) {
     error = (e as Error).stack ?? String(e);
   }
+
+  // Logos for competitors that don't have one kept yet. Never blocks the run.
+  await fillMissingLogos(db).catch((e) => console.error(`logos failed: ${(e as Error).message}`));
 
   // The owner's side: suggestions from Noma's own site, and teams unhappy with their items. Never blocks the run.
   try {

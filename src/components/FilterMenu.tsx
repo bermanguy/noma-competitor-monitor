@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { CompanyLogo } from "./CompanyLogo";
 
-export interface FilterOption { value: string; label: string; count?: number; domain?: string; canary?: boolean }
+export interface FilterOption { value: string; label: string; count?: number; domain?: string; logoId?: number; canary?: boolean }
 export interface FilterGroup { param: string; title?: string; options: FilterOption[] }
 
 /** A small dropdown that sets one query parameter per group and reloads the list. */
@@ -47,7 +47,7 @@ export function FilterMenu({ label, value, groups, dashed, clearParam }: { label
                 const on = params.get(g.param) === o.value;
                 return (
                   <a key={o.value} role="menuitemcheckbox" aria-checked={on} className={`menu-o${on ? " on" : ""}`} href={href(g.param, o.value)}>
-                    {o.domain !== undefined && <CompanyLogo name={o.label} domain={o.domain} size={18} canary={o.canary} />}
+                    {o.domain !== undefined && <CompanyLogo id={o.logoId} name={o.label} domain={o.domain} size={18} canary={o.canary} />}
                     <span>{o.label}</span>
                     {on ? <span className="menu-n">✓</span> : o.count !== undefined && <span className="menu-n">{o.count}</span>}
                   </a>
