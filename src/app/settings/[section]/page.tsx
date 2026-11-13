@@ -1,4 +1,5 @@
 import { desc, eq } from "drizzle-orm";
+import { localDate, localDateTime, localDay, localShort } from "@/lib/time";
 import { db } from "@/db/client";
 import { competitor, goldenItem, ownerSuggestion, source, team, topic } from "@/db/schema";
 import { GoldenItem } from "@/eval/golden";
@@ -76,7 +77,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
       {on("review") && review.length === 0 && <div className="card muted">Nothing to review. When a team marks an item not useful in Slack, it shows up here.</div>}
       {on("review") && review.length > 0 && (
         <>
-          <p className="muted">&quot;Add to the exam&quot; saves your answer as an exam item, so every later exam checks the judge against it.</p>
+          <p className="muted">&quot;Add to the golden set&quot; saves your answer as a test case, so every later eval run checks the judge against it.</p>
           {review.map((r) => (
             <form key={r.itemId} action={addToExamAction} className="card">
               <input type="hidden" name="itemId" value={r.itemId} />
@@ -98,8 +99,8 @@ export default async function Settings({ params, searchParams }: { params: Promi
                   </label>
                 ))}
               </div>
-              <input type="text" name="note" placeholder="Why these levels (optional, kept with the exam item)" style={{ marginTop: 8 }} />
-              <button style={{ marginTop: 8 }}>Add to the exam</button>
+              <input type="text" name="note" placeholder="Why these levels (optional, kept with the test case)" style={{ marginTop: 8 }} />
+              <button style={{ marginTop: 8 }}>Add to the golden set</button>
             </form>
           ))}
         </>
@@ -107,7 +108,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
 
       {on("review") && inExam.length > 0 && (
         <details className="card" style={{ marginTop: 12 }}>
-          <summary><strong>In the exam from team votes ({inExam.length})</strong> <span className="muted">· change an answer you already added</span></summary>
+          <summary><strong>In the golden set from team votes ({inExam.length})</strong> <span className="muted">· change an answer you already added</span></summary>
           {inExam.map(({ itemId, g }) => (
             <form key={itemId} action={addToExamAction} style={{ borderTop: "1px solid var(--line)", paddingTop: 10, marginTop: 10 }}>
               <input type="hidden" name="itemId" value={itemId} />
@@ -247,7 +248,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
         <form key={s.id} action={approveSuggestion} className="card" style={{ marginBottom: 12 }}>
           <input type="hidden" name="id" value={s.id} />
           <div>{s.whatChanged}</div>
-          <div className="muted">Seen on <a href={s.pageUrl}>{s.pageUrl}</a> · {s.createdAt.toISOString().slice(0, 10)}</div>
+          <div className="muted">Seen on <a href={s.pageUrl}>{s.pageUrl}</a> · {localDate(s.createdAt)}</div>
           {s.company && (
             <div style={{ marginTop: 10 }}>
               <label><input type="checkbox" name="useCompany" value="1" defaultChecked /> <strong>Update &quot;What Noma sells&quot;</strong> to this (you can edit it first):</label>
@@ -280,7 +281,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
                 <summary className="muted">Earlier versions ({history[k]!.length})</summary>
                 {history[k]!.map((h) => (
                   <div key={h.id} style={{ marginTop: 6 }}>
-                    <div className="muted">Replaced {h.replacedAt.toISOString().slice(0, 16).replace("T", " ")} by {h.replacedBy === "suggestion" ? "an approved suggestion" : h.replacedBy === "restore" ? "a restore" : "an edit"}</div>
+                    <div className="muted">Replaced {localDateTime(h.replacedAt)} by {h.replacedBy === "suggestion" ? "an approved suggestion" : h.replacedBy === "restore" ? "a restore" : "an edit"}</div>
                     <pre style={{ whiteSpace: "pre-wrap", maxHeight: 120, overflow: "auto" }}>{h.value}</pre>
                     <button className="secondary" formAction={restoreOwnerTextAction} name="id" value={h.id}>Restore this version</button>
                   </div>
@@ -376,7 +377,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
             <div>
               <div className="preview-h">
                 {preview.mode === "next" && <><strong>{previewTeam.name}&apos;s next digest</strong> · {preview.storyCount} {preview.storyCount === 1 ? "update" : "updates"}, goes out {preview.when}</>}
-                {preview.mode === "last" && <><strong>Nothing new is waiting.</strong> This is the last digest {previewTeam.name} got{preview.lastSentAt ? `, on ${preview.lastSentAt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}` : ""}.</>}
+                {preview.mode === "last" && <><strong>Nothing new is waiting.</strong> This is the last digest {previewTeam.name} got{preview.lastSentAt ? `, on ${localDate(preview.lastSentAt)}` : ""}.</>}
                 {preview.mode === "empty" && <><strong>Nothing to preview yet.</strong> The first digest appears here once a change worth knowing is found.</>}
               </div>
               {preview.quiet && <div className="notice">{previewTeam.name} is set to urgent only, so no daily digest is sent. <a href="/settings/teams">Change it</a></div>}

@@ -146,7 +146,7 @@ export async function restoreOwnerTextAction(form: FormData) {
 
 const LEVELS = ["alert", "digest", "log", "none"] as const;
 
-/** The owner turns an item a team marked not useful into an exam item, with the right level for each team. */
+/** The owner turns an item a team marked not useful into a golden-set item, with the right level for each team. */
 export async function addToExamAction(form: FormData) {
   const itemId = Number(form.get("itemId"));
   const expected: Record<string, Level> = {};
@@ -156,7 +156,7 @@ export async function addToExamAction(form: FormData) {
   const g = await addToExam(db(), itemId, expected, String(form.get("note") ?? ""));
   revalidatePath("/settings", "layout");
   redirect("/settings/review?" + (g
-    ? "added=" + encodeURIComponent(`Saved to the exam. From the next exam on, the judge is checked against your answer for "${g.title ?? g.url}".`)
+    ? "added=" + encodeURIComponent(`Added to the golden set. From the next eval run on, the judge is checked against your answer for "${g.title ?? g.url}".`)
     : "error=" + encodeURIComponent("That item could not be added")) + "#review");
 }
 

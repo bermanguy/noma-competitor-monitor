@@ -128,13 +128,13 @@ flowchart LR
   FB --> UR[Usefulness rate per team<br/>on the Builder area]
 ```
 
-**When evals run.** The golden set is an exam with an answer key, run *before* a change ships: `npm run eval` grades the judge on every labelled item and writes a per-team report to `evals/reports/`. A prompt, lens, level or model change merges only if per-team precision does not drop. Live feedback from Slack is the check *after* shipping, and the two feed each other.
+**When evals run.** The golden set is a test with an answer key, run *before* a change ships: `npm run eval` grades the judge on every labelled item and writes a per-team report to `evals/reports/`. A prompt, lens, level or model change merges only if per-team precision does not drop. Live feedback from Slack is the check *after* shipping, and the two feed each other.
 
 - **Before launch:** the golden set starts with authored cases the live feed rarely produces (a cosmetic edit, a category-language tagline, a price change, an injected instruction, a vague "may explore" claim). After the first live run, `npm run golden:export -- --latest 20` copies real judged items into `evals/golden/` without the model's answer, so the labeller is not anchored on it. Labels start as `draft` and become `owner` once the product owner confirms them.
 - **How it is graded:** "sent" means `alert` or `digest`. Per team: precision (of what we send, how much the team should get), recall (of what it should get, how much we send), exact level, severe misses (a missed alert, or an alert on something irrelevant), and evidence failures. A sent judgment without verbatim evidence counts as not sent, as in production (after the same one retry). Items that repeat an earlier story also name it (`expectedSameStoryAs`), and the report shows how many links the judge got right. `npm run eval -- --save-baseline` records the bar; later runs exit with an error when a team's precision drops.
-- **On every change** to prompts, lenses, levels or models, the Builder runs the exam ("Run the exam" on `/ops`, on the server where the API key lives, against the live prompts) and compares it with the saved baseline. `npm run eval` does the same from a laptop.
+- **On every change** to prompts, lenses, levels or models, the Builder runs the evals ("Run the evals" on `/ops/evals`, on the server where the API key lives, against the live prompts) and compares it with the saved baseline. `npm run eval` does the same from a laptop.
 - **Who labels:** each area head owns their team's column of the answer key, because they know best what their team needs. In this build the product owner labels all three as a stand-in.
-- **After launch:** each Slack item carries a feedback link. A "not useful" vote asks why. Rated items are added to the prompt as recent per-team examples. The owner sees every recent "not useful" vote under "To review" in Settings, picks the level each team should have got, and "Add to the exam" stores the item as an exam item (`golden_item` table, same shape as a file in `evals/golden/`) ([0011](decisions/0011-votes-become-exam-items.md)). The exam on `/ops` grades the golden files plus these items, and lists them as "Added by the owner from team votes" with the judge's answer next to the owner's. `npm run eval` from a laptop still grades the files only.
+- **After launch:** each Slack item carries a feedback link. A "not useful" vote asks why. Rated items are added to the prompt as recent per-team examples. The owner sees every recent "not useful" vote under "To review" in Settings, picks the level each team should have got, and "Add to the golden set" stores the item as a golden-set item (`golden_item` table, same shape as a file in `evals/golden/`) ([0011](decisions/0011-votes-become-exam-items.md)). The evals on `/ops/evals` grade the golden files plus these items, and lists them as "Added by the owner from team votes" with the judge's answer next to the owner's. `npm run eval` from a laptop still grades the files only.
 - **When a score drops, find the cause before changing anything (error analysis).** Read each disagreement with the judge's reason, which `/ops` and the report show, and put it in one bucket:
 
   | Cause | Example | Fix | Owner |
@@ -145,7 +145,7 @@ flowchart LR
   | The judge broke a rule | Treated "plans to" as "launched" | Change the scaffold prompt or try a stronger model | Builder |
   | Bad input | Text cut off, wrong title, page not rendered | Fix collection or extraction | Builder |
 
-  Fix the largest bucket first, change one thing at a time, rerun the exam, check that no other team got worse, and save the new baseline. Low precision means noise: tighten the lens or the levels. Low recall means misses: broaden them.
+  Fix the largest bucket first, change one thing at a time, rerun the evals, check that no other team got worse, and save the new baseline. Low precision means noise: tighten the lens or the levels. Low recall means misses: broaden them.
 - **Honest limit:** the first golden set is our own judgment of what the teams want. Real team feedback replaces it within weeks, and the design makes that the default path.
 
 ## Running unattended
@@ -175,7 +175,7 @@ erDiagram
   RUN ||--o{ SOURCE_RUN : covers
 ```
 
-Core tables: `competitor`, `source` (kind, URL, fetch mode, health), `snapshot` (extracted text and hash), `item` (new post or page change, with diff), `team` (lens, noise setting, Slack channel), `topic`, `judgment`, `delivery`, `feedback`, `run`, `source_run`, `golden_item` (exam items the owner added from votes), `usage`.
+Core tables: `competitor`, `source` (kind, URL, fetch mode, health), `snapshot` (extracted text and hash), `item` (new post or page change, with diff), `team` (lens, noise setting, Slack channel), `topic`, `judgment`, `delivery`, `feedback`, `run`, `source_run`, `golden_item` (golden-set items the owner added from votes), `usage`.
 
 ## Repository layout
 

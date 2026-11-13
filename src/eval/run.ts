@@ -81,7 +81,7 @@ export async function runEval(db: DB, opts: { model?: string; only?: string[]; i
   };
 }
 
-/** The exam as the operator sees it: the last result, the agreed baseline, and whether one is running. */
+/** The evals as the Builder sees them: the last result, the agreed baseline, and whether one is running. */
 const LAST = "eval:last";
 const BASELINE = "eval:baseline";
 const RUNNING = "eval:running";
@@ -101,21 +101,25 @@ export async function examState(db: DB) {
   const running = await getJson<{ since: string }>(db, RUNNING);
   // A run that started over 30 minutes ago and never finished crashed.
   const busy = !!running && Date.now() - new Date(running.since).getTime() < 30 * 60e3;
-  return { last, baseline, running: busy, regressions: last ? regressions(last.scores, baseline?.scores ?? null) : [] };
+  return { last, baseline, running: busy, runningSince: busy ? running!.since : null, regressions: last ? regressions(last.scores, baseline?.scores ?? null) : [] };
 }
 
-/** Runs the exam in the background from the operator view. One at a time. */
+/** Runs the evals in the background from the Builder area. One at a time. */
 export async function startExam(db: DB): Promise<boolean> {
   if ((await examState(db)).running) return false;
   await setJson(db, RUNNING, { since: new Date().toISOString() });
   void runEval(db)
     .then((r) => setJson(db, LAST, r))
-    .catch((e) => console.error("exam failed", e))
+    .catch((e) => console.error("eval run failed", e))
     .finally(() => db.delete(setting).where(eq(setting.key, RUNNING)));
   return true;
 }
 
-export async function saveBaseline(db: DB) {
+/** Makes the last run the baseline. Returns the run times before and after, so the page can say what changed. */
+export async function saveBaseline(db: DB): Promise<{ was: string | null; now: string } | null> {
   const last = await getJson<EvalResult>(db, LAST);
-  if (last) await setJson(db, BASELINE, last);
+  if (!last) return null;
+  const was = (await getJson<EvalResult>(db, BASELINE))?.when ?? null;
+  await setJson(db, BASELINE, last);
+  return { was, now: last.when };
 }
