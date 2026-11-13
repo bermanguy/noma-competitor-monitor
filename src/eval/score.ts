@@ -105,7 +105,7 @@ export function formatReport(args: {
   const { scores, outcomes } = args;
   const misses = outcomes.filter((o) => o.got !== o.expected);
   return [
-    `# Eval ${args.when}`,
+    `# Evals ${args.when}`,
     "",
     `Prompt ${args.promptVersion} · model ${args.model} · ${new Set(outcomes.map((o) => o.id)).size} items graded · ${args.unlabelled} unlabelled · ${args.failed.length} failed · $${args.costUsd.toFixed(2)}`,
     "",
@@ -127,7 +127,7 @@ export function formatReport(args: {
     "",
     "## How the digests would look",
     "",
-    "What each team would have received in this exam, grouped by topic as the digest groups it. A look, not a score.",
+    "What each team would have received in this eval run, grouped by topic as the digest groups it. A look, not a score.",
     "",
     digestPreview(outcomes),
     "",
@@ -155,6 +155,44 @@ function ownerItemsSection(outcomes: Outcome[], ids: string[]): string {
   return [
     "",
     `**Added by the owner from team votes:** ${rows.filter((r) => r.agreed).length}/${rows.length} now judged as the owner said`,
-    ...rows.map((r) => `- ${r.id}: ${!r.graded ? "not graded in this exam" : r.outcomes.map((o) => `${o.team} expected ${o.expected}, got ${o.got}`).join("; ")}`),
+    ...rows.map((r) => `- ${r.id}: ${!r.graded ? "not graded in this run" : r.outcomes.map((o) => `${o.team} expected ${o.expected}, got ${o.got}`).join("; ")}`),
   ].join("\n");
+}
+
+export type Verdict = "baseline" | "no-baseline" | "better" | "worse" | "mixed" | "same";
+export interface MetricChange { team: string; metric: "precision" | "recall"; before: number | null; after: number | null; delta: number | null }
+export interface AnswerChange { id: string; team: string; expected: Level; before: Level | null; after: Level; why?: string }
+
+/**
+ * Compares the latest eval run with the baseline in plain terms: each team's precision and recall
+ * moved up, down or not at all, and which answers changed. "Worse" follows `regressions`, so the
+ * verdict and the red warning always agree.
+ */
+export function compareRuns(
+  last: { when: string; scores: TeamScore[]; outcomes: Outcome[] },
+  baseline: { when: string; scores: TeamScore[]; outcomes: Outcome[] } | null,
+): { verdict: Verdict; changes: MetricChange[]; better: number; worse: number; answers: AnswerChange[]; newItems: string[] } {
+  if (!baseline) return { verdict: "no-baseline", changes: [], better: 0, worse: 0, answers: [], newItems: [] };
+  const changes: MetricChange[] = [];
+  for (const c of last.scores) {
+    const b = baseline.scores.find((x) => x.team === c.team);
+    for (const metric of ["precision", "recall"] as const) {
+      const before = b?.[metric] ?? null;
+      const after = c[metric];
+      changes.push({ team: c.team, metric, before, after, delta: before === null || after === null ? null : Math.round((after - before) * 100) });
+    }
+  }
+  const worse = regressions(last.scores, baseline.scores).length;
+  const better = changes.filter((c) => (c.delta ?? 0) > 0).length;
+  const prev = new Map(baseline.outcomes.map((o) => [`${o.id}|${o.team}`, o]));
+  const answers: AnswerChange[] = [];
+  for (const o of last.outcomes) {
+    const p = prev.get(`${o.id}|${o.team}`);
+    if (!p || p.got === o.got) continue;
+    answers.push({ id: o.id, team: o.team, expected: o.expected, before: p?.got ?? null, after: o.got, why: o.why });
+  }
+  const seen = new Set(baseline.outcomes.map((o) => o.id));
+  const newItems = [...new Set(last.outcomes.map((o) => o.id).filter((id) => !seen.has(id)))];
+  const verdict: Verdict = last.when === baseline.when ? "baseline" : worse && better ? "mixed" : worse ? "worse" : better ? "better" : "same";
+  return { verdict, changes, better, worse, answers, newItems };
 }

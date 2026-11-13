@@ -21,7 +21,7 @@ export const BUILDER: Viewer = { key: "builder", name: "Guy", title: "Builder", 
 
 export const ROLE_NAME: Record<Role, string> = { builder: "Builder", owner: "Owner", member: "Member" };
 export const ROLE_HINT: Record<Role, string> = {
-  builder: "Everything, including runs, sources and the exam",
+  builder: "Everything, including runs, sources and the evals",
   owner: "Sets up their team, adds people to it, and previews its digest",
   member: "Reads their team's changes. Gets them in Slack",
 };

@@ -1,4 +1,5 @@
 import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
+import { localDate, localDateTime, localDay, localShort } from "@/lib/time";
 import { db } from "@/db/client";
 import { competitor, delivery, item, judgment, team, type Level } from "@/db/schema";
 import { allViewers, currentViewer } from "@/lib/viewer";
@@ -32,10 +33,8 @@ const SLACK_PATH = "M5 15a2 2 0 1 1-2-2h2zm1 0a2 2 0 1 1 4 0v5a2 2 0 1 1-4 0zM9 
 const SlackMark = () => <svg className="slack-mark" viewBox="0 0 24 24" aria-hidden><path d={SLACK_PATH} /></svg>;
 const LevelTag = ({ level }: { level: Level }) => <span className={`lvl lvl-${level}`}><LevelIcon level={level} />{LEVEL_NAME[level]}</span>;
 
-const day = (d: Date) => d.toISOString().slice(0, 10);
-const shortDate = (d: Date, now: Date) =>
-  day(d) === day(now) ? d.toISOString().slice(11, 16) : d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-const when = (d: Date) => `${d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}, ${d.toISOString().slice(11, 16)} UTC`;
+const shortDate = (d: Date, now: Date) => localShort(d, now);
+const when = (d: Date) => localDateTime(d);
 
 export default async function Changes({ searchParams }: { searchParams: Promise<Params> }) {
   const sp = await searchParams;
@@ -103,7 +102,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
     const s = p.toString();
     return s ? `/?${s}` : "/";
   };
-  const groupOf = (dt: Date) => (day(dt) === day(now) ? "Today" : now.getTime() - dt.getTime() < 7 * 864e5 ? "This week" : "Earlier");
+  const groupOf = (dt: Date) => (localDay(dt) === localDay(now) ? "Today" : now.getTime() - dt.getTime() < 7 * 864e5 ? "This week" : "Earlier");
   const cols = teamKey ? "cols-1" : "cols-3";
   const hasFilters = !!(sp.company || sp.topic || sp.q || level || dateKey !== "30" || sp.all);
 
@@ -192,7 +191,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
                         const j = x.all.find((y) => y.teamKey === t.key);
                         if (!j) return null;
                         const s = sent.get(j.id);
-                        const slack = s ? (s.kind === "alert" ? `Sent to Slack as an alert, ${when(s.at)}` : `In the ${s.at.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })} digest`)
+                        const slack = s ? (s.kind === "alert" ? `Sent to Slack as an alert, ${when(s.at)}` : `In the ${localDate(s.at)} digest`)
                           : j.level === "none" || j.level === "log" ? "Not sent to Slack"
                           : !j.evidenceOk ? "Not sent: a quote was not found in the source"
                           : x.i.isCanary && j.level === "digest" ? "Not sent: test pages stay out of the digest"
@@ -224,7 +223,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
                   <div className="ch-acts">
                     <a href={x.i.url} target="_blank" rel="noreferrer">Open the {x.i.kind === "post" ? "post" : "page"} ↗</a>
                     <span className="muted">
-                      {x.i.publishedAt ? `Published ${x.i.publishedAt.toISOString().slice(0, 10)} · ` : ""}Found {when(x.i.firstSeenAt)}
+                      {x.i.publishedAt ? `Published ${localDay(x.i.publishedAt)} · ` : ""}Found {when(x.i.firstSeenAt)}
                     </span>
                   </div>
                 </div>

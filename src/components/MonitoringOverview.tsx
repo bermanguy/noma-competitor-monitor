@@ -1,4 +1,5 @@
 import { ALERT_RULES, type Metric, type MetricGroup } from "@/lib/monitoring";
+import { localDate, localDateTime, localDay, localShort } from "@/lib/time";
 
 const GROUPS: MetricGroup[] = ["Availability", "Reliability", "AI quality", "Cost"];
 const STATUS_LABEL = { ok: "On target", warn: "Near the line", bad: "Off target", none: "No data yet" } as const;
@@ -12,7 +13,7 @@ export function MonitoringOverview({ metrics, recentAlerts }: { metrics: Metric[
     <>
       <div className={`notice mon-summary mon-${off ? "warn" : "ok"}`}>
         {off ? `${off} of ${metrics.length} metrics need a look.` : `All ${metrics.length} metrics are on target or waiting for data.`}
-        <span className="muted"> {active} alert rules active, {ALERT_RULES.length - active} drafts. Last ops alert: {recentAlerts[0] ? recentAlerts[0].at.toISOString().slice(0, 16).replace("T", " ") + " UTC" : "none yet"}.</span>
+        <span className="muted"> {active} alert rules active, {ALERT_RULES.length - active} drafts. Last ops alert: {recentAlerts[0] ? localDateTime(recentAlerts[0].at) : "none yet"}.</span>
       </div>
 
       <div className="mon-grid">

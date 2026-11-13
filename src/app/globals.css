@@ -274,3 +274,10 @@ body .content > main > .people-row { border:0; margin-bottom:10px; }
 .mon-form { border:0; padding:0; margin:12px 0 0; display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px 14px; }
 .mon-form label { display:grid; gap:4px; font-size:12px; color:var(--muted); }
 .mon-form[disabled] { opacity:.75; }
+.verdict { border:1px solid var(--line); border-left-width:5px; border-radius:8px; padding:10px 14px; margin-bottom:12px; background: var(--card); }
+.verdict.good { border-left-color:#2e9e5b; background:#f1faf4; }
+.verdict.warn { border-left-color:#d99a1e; background:#fffaf0; }
+.verdict.bad { border-left-color:#d64545; background:#fff3f3; }
+.up { color:#1f8a4c; font-weight:600; }
+.down { color:#c43b3b; font-weight:600; }
+.small { font-size: 12px; }

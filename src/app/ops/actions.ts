@@ -1,6 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
+import { localDateTime } from "@/lib/time";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db/client";
@@ -62,11 +63,13 @@ export async function retryItem(form: FormData) {
 /** Grades the live prompts on the golden set, in the background. About 2 minutes and a few dollars. */
 export async function runExam() {
   const started = await startExam(db());
-  redirect("/ops/exam?msg=" + encodeURIComponent(started ? "Exam started. It takes about 2 minutes; refresh to see the result under Output quality." : "An exam is already running."));
+  redirect("/ops/evals" + (started ? "" : "?msg=" + encodeURIComponent("A run is already in progress.")));
 }
 
 export async function saveExamBaseline() {
-  await saveBaseline(db());
+  const r = await saveBaseline(db());
   revalidatePath("/ops", "layout");
-  redirect("/ops/exam?msg=" + encodeURIComponent("Saved as the baseline. Later exams are compared with it."));
+  const msg = !r ? "Nothing to save yet: run the evals first."
+    : `Baseline updated: was ${r.was ? localDateTime(r.was) : "none"}, now ${localDateTime(r.now)}. New runs are compared with this one.`;
+  redirect("/ops/evals?msg=" + encodeURIComponent(msg));
 }

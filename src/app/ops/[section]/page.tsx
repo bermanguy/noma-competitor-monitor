@@ -1,4 +1,5 @@
 import { desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { localDateTime, localTime } from "@/lib/time";
 import { db } from "@/db/client";
 import { competitor, delivery, feedback, item, judgment, run, setting, source, usage } from "@/db/schema";
 import { config } from "@/config";
@@ -6,9 +7,10 @@ import { DEFAULT_CANARY_PRICING } from "@/lib/canary";
 import { sourceHealth } from "@/pipeline/health";
 import { addSource, retryItem, runExam, runNow, saveCanary, saveCanaryPricing, saveExamBaseline, updateSource } from "../actions";
 import { examState } from "@/eval/run";
-import { ownerItemResults, pct } from "@/eval/score";
+import { compareRuns, ownerItemResults, pct } from "@/eval/score";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { ownerGolden } from "@/eval/owner-golden";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { computeMetrics } from "@/lib/monitoring";
 import { MonitoringOverview } from "@/components/MonitoringOverview";
 import { OPS_SECTIONS, subLabel, type OpsSection } from "@/lib/nav";
@@ -18,8 +20,8 @@ const LEAD: Record<OpsSection, string> = {
   runs: "Every run of the pipeline, newest first.",
   sources: "Every page and feed we read, and whether it is healthy.",
   errors: "Items that failed or were held back, so nothing is lost silently.",
-  exam: "Hand-labelled items with the right level for each team. The exam judges them with today's prompts and checks the answers.",
-  quality: "How useful the teams find what we send, from their Slack ratings.",
+  evals: "Test the judge on the golden set before a prompt or model change ships, and compare with the last good run.",
+  feedback: "After a change ships: how useful each team finds what we send, from their 👍/👎 in Slack. \"Not useful\" votes go to Setup → To review, where the owner can add them to the golden set.",
   spend: "What the models cost this month.",
   canary: "Pages we control, watched like competitor pages, to test the whole chain end to end.",
 };
@@ -28,6 +30,8 @@ export const dynamic = "force-dynamic";
 
 export default async function Ops({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ msg?: string }> }) {
   const { section: raw } = await params;
+  const moved: Record<string, string> = { exam: "evals", quality: "feedback" };
+  if (moved[raw]) redirect(`/ops/${moved[raw]}`);
   if (!(OPS_SECTIONS as readonly string[]).includes(raw)) notFound();
   const section = raw as OpsSection;
   const on = (s: OpsSection) => section === s;
@@ -73,12 +77,12 @@ export default async function Ops({ params, searchParams }: { params: Promise<{ 
       </div>
 
       <table>
-        <thead><tr><th>#</th><th>Started (UTC)</th><th>Trigger</th><th>Status</th><th>Sources</th><th>New</th><th>Judged</th><th>Sent</th><th>Error</th></tr></thead>
+        <thead><tr><th>#</th><th>Started</th><th>Trigger</th><th>Status</th><th>Sources</th><th>New</th><th>Judged</th><th>Sent</th><th>Error</th></tr></thead>
         <tbody>
           {runs.map((r) => (
             <tr key={r.id}>
               <td>{r.id}</td>
-              <td>{r.startedAt.toISOString().slice(0, 16).replace("T", " ")}</td>
+              <td>{localDateTime(r.startedAt)}</td>
               <td>{r.trigger}</td>
               <td className={r.status === "ok" ? "h-healthy" : r.status === "running" ? "h-new" : r.status === "partial" ? "h-quiet" : "h-failing"}>{r.status}</td>
               <td>{r.stats.sources ?? "-"}{r.stats.sourcesFailed ? ` (${r.stats.sourcesFailed} failed)` : ""}</td>
@@ -103,7 +107,7 @@ export default async function Ops({ params, searchParams }: { params: Promise<{ 
               <tr key={s.id}>
                 <td><strong>{c.name}</strong> · {s.label} <span className="muted">({s.kind === "page" ? `${s.pageType} page` : s.kind})</span><div className="muted">{s.url}</div></td>
                 <td><span className={`chip h-${h.health}`}>{h.health}</span><div className="muted">{h.reason}</div></td>
-                <td className="muted">{s.lastSuccessAt?.toISOString().slice(0, 16).replace("T", " ") ?? "never"}</td>
+                <td className="muted">{s.lastSuccessAt ? localDateTime(s.lastSuccessAt) : "never"}</td>
                 <td>
                   <form action={updateSource} style={{ display: "grid", gap: 4 }}>
                     <input type="hidden" name="id" value={s.id} />
@@ -153,7 +157,7 @@ export default async function Ops({ params, searchParams }: { params: Promise<{ 
           </table>
       )}
 
-      {on("quality") && (<>
+      {on("feedback") && (<>
           <table>
             <thead><tr><th>Team</th><th>Rated</th><th>Useful</th></tr></thead>
             <tbody>
@@ -161,46 +165,87 @@ export default async function Ops({ params, searchParams }: { params: Promise<{ 
               {fb.map((r) => <tr key={r.team}><td>{r.team}</td><td>{r.total}</td><td>{Math.round((100 * Number(r.useful)) / Number(r.total))}%</td></tr>)}
             </tbody>
           </table>
-          <p className="muted">Golden set: <a href="/ops/golden-export?latest=30">Download the latest 30 judged items for the exam</a>, then add them with <code>npm run golden:export -- --from-file</code> and label each one.</p>
+          <p className="muted">Golden set: <a href="/ops/golden-export?latest=30">Download the latest 30 judged items as golden-set candidates</a>, then add them with <code>npm run golden:export -- --from-file</code> and label each one.</p>
           <p className="muted">Judgments held back because a quote was not in the source: {heldEvidence[0]?.n ?? 0}.</p>
       </>)}
 
-      {on("exam") && (<>
-          <p className="muted">Precision: of what we would send, how much the team should get. Recall: of what the team should get, how much we send.</p>
-          {exam.last ? (
-            <>
+      {on("evals") && (<>
+          <p className="muted"><strong>Evals test the judge before a change ships.</strong> The golden set is a list of real and made-up items with the right level for each team. A run judges them all with today&apos;s prompts and model and grades the answers. Compare every run with the <strong>baseline</strong>: the run we last agreed was good.</p>
+          {exam.running && <><AutoRefresh /><div className="notice">Running… started {localTime(exam.runningSince!)}. It takes about 2 minutes; this page updates on its own.</div></>}
+          {exam.last ? (() => {
+            const cmp = compareRuns(exam.last, exam.baseline);
+            const tone = { better: "good", same: "", baseline: "", "no-baseline": "", mixed: "warn", worse: "bad" }[cmp.verdict];
+            const headline = {
+              baseline: "This run is the baseline. Run the evals again after a prompt or model change to compare.",
+              "no-baseline": "No baseline yet. If this run looks right, make it the baseline.",
+              better: `Better than the baseline on ${cmp.better} number${cmp.better === 1 ? "" : "s"}, worse on none.`,
+              same: "Same as the baseline.",
+              mixed: `Better than the baseline on ${cmp.better} number${cmp.better === 1 ? "" : "s"}, worse on ${cmp.worse}: ${exam.regressions.join("; ")}.`,
+              worse: `Worse than the baseline: ${exam.regressions.join("; ")}.`,
+            }[cmp.verdict];
+            const arrow = (d: number | null) => d === null || d === 0 ? <span className="muted">no change</span> : d > 0 ? <span className="up">▲ +{d}</span> : <span className="down">▼ {d}</span>;
+            return (<>
+              <div className={`verdict ${tone}`}>
+                <div className="muted">Latest run · {localDateTime(exam.last.when)}</div>
+                <strong>{headline}</strong>
+                {cmp.newItems.length > 0 && <div className="muted">{cmp.newItems.length} item{cmp.newItems.length === 1 ? " is" : "s are"} new since the baseline, so part of any change can come from them.</div>}
+              </div>
               <table>
-                <thead><tr><th>Team</th><th>Precision</th><th>Recall</th><th>Exact level</th><th>Severe misses</th></tr></thead>
+                <thead><tr><th>Team</th><th>Precision<div className="muted small">of what we send, how much they should get</div></th><th>Recall<div className="muted small">of what they should get, how much we send</div></th><th>Exact level</th><th>Severe misses</th></tr></thead>
                 <tbody>
                   {exam.last.scores.map((s) => {
                     const b = exam.baseline?.scores.find((x) => x.team === s.team);
-                    return <tr key={s.team}><td>{s.team}</td><td>{pct(s.precision)}{b ? <span className="muted"> (baseline {pct(b.precision)})</span> : null}</td><td>{pct(s.recall)}{b ? <span className="muted"> (baseline {pct(b.recall)})</span> : null}</td><td>{s.exact}/{s.graded}</td><td>{s.severe.length}</td></tr>;
+                    const ch = (m: "precision" | "recall") => cmp.changes.find((c) => c.team === s.team && c.metric === m)?.delta ?? null;
+                    const cell = (m: "precision" | "recall") => <td><strong>{pct(s[m])}</strong>{b && cmp.verdict !== "baseline" ? <div className="small">baseline {pct(b[m])} · {arrow(ch(m))}</div> : null}</td>;
+                    return <tr key={s.team}><td>{s.team}</td>{cell("precision")}{cell("recall")}<td>{s.exact}/{s.graded}</td><td>{s.severe.length}</td></tr>;
                   })}
                 </tbody>
               </table>
-              <div className="muted">{exam.last.graded} items · {exam.last.promptVersion} · {exam.last.model} · {exam.last.when.slice(0, 16).replace("T", " ")} UTC · ${exam.last.costUsd.toFixed(2)}{exam.last.failed.length ? ` · ${exam.last.failed.length} failed` : ""}{exam.last.stories?.length ? ` · same-story links ${exam.last.stories.filter((x) => x.got === x.expected).length}/${exam.last.stories.length} correct` : ""}{exam.last.topics?.length ? ` · topic tags ${exam.last.topics.filter((x) => x.hit).length}/${exam.last.topics.length} fit` : ""}</div>
-              <div className="muted">{exam.baseline
-                ? <>Baseline: the exam of {exam.baseline.when.slice(0, 16).replace("T", " ")} UTC ({exam.baseline.promptVersion}). {exam.baseline.when === exam.last.when ? "The result above is the baseline." : "The result above is compared with it."}</>
-                : "No baseline saved yet. Save one to compare later exams with it."}</div>
+              <div className="muted small">{exam.last.graded} items · prompt {exam.last.promptVersion} · {exam.last.model} · ${exam.last.costUsd.toFixed(2)}{exam.last.failed.length ? ` · ${exam.last.failed.length} failed` : ""}{exam.last.stories?.length ? ` · same-story links ${exam.last.stories.filter((x) => x.got === x.expected).length}/${exam.last.stories.length} correct` : ""}{exam.last.topics?.length ? ` · topic tags ${exam.last.topics.filter((x) => x.hit).length}/${exam.last.topics.length} fit` : ""}</div>
+              <div className="muted small">{exam.baseline ? <>Baseline: the run of {localDateTime(exam.baseline.when)} ({exam.baseline.graded} items, prompt {exam.baseline.promptVersion}).</> : "No baseline saved yet."}</div>
+
+              {cmp.verdict !== "baseline" && cmp.verdict !== "no-baseline" && (
+                <div className="card" style={{ marginTop: 12 }}>
+                  <strong>What changed since the baseline</strong> <span className="muted">· these explain the numbers above</span>
+                  {cmp.newItems.length > 0 && <div style={{ marginTop: 6 }}><strong>{cmp.newItems.length} new item{cmp.newItems.length === 1 ? "" : "s"}</strong> <span className="muted">(not in the baseline run): {cmp.newItems.join(", ")}. Their answers are under &quot;Every disagreement&quot; below.</span></div>}
+                  <div style={{ marginTop: 6 }}><strong>{cmp.answers.length} answer{cmp.answers.length === 1 ? "" : "s"} moved</strong> <span className="muted">on items both runs graded.</span></div>
+                  {cmp.answers.length === 0 ? <div className="muted">None.</div> : (
+                    <table style={{ marginTop: 6 }}><thead><tr><th>Item</th><th>Team</th><th>Answer key</th><th>Baseline → now</th><th>Judge&apos;s reason now</th></tr></thead><tbody>
+                      {cmp.answers.map((x) => <tr key={x.id + x.team}><td>{x.id}</td><td>{x.team}</td><td>{x.expected}</td>
+                        <td><span style={{ whiteSpace: "nowrap" }}>{x.before} → <strong>{x.after}</strong> {x.after === x.expected ? <span className="up">✓ fixed</span> : x.before === x.expected ? <span className="down">✗ broke</span> : null}</span></td>
+                        <td className="muted small">{x.why ?? ""}</td></tr>)}
+                    </tbody></table>
+                  )}
+                </div>
+              )}
+
               {ownerItems.length > 0 && (
                 <div className="card" style={{ marginTop: 8 }}>
                   <strong>Added by the owner from team votes</strong> <span className="muted">· {ownerResults.filter((r) => r.agreed).length} of {ownerResults.length} now judged as the owner said</span>
                   <table style={{ marginTop: 6 }}><tbody>{ownerResults.map((r) => {
                     const g = ownerItems.find((x) => x.id === r.id)!;
-                    return <tr key={r.id}><td>{g.competitor} · {g.title ?? g.url}</td><td>{r.graded ? r.outcomes.map((o) => <div key={o.team}>{o.team}: owner {o.expected}, judge {o.got} {o.got === o.expected ? "✓" : "✗"}</div>) : <span className="muted">Added after this exam; run the exam to grade it</span>}</td></tr>;
+                    return <tr key={r.id}><td>{g.competitor} · {g.title ?? g.url}</td><td>{r.graded ? r.outcomes.map((o) => <div key={o.team}>{o.team}: owner {o.expected}, judge {o.got} {o.got === o.expected ? "✓" : "✗"}</div>) : <span className="muted">Added after this run; run the evals to grade it</span>}</td></tr>;
                   })}</tbody></table>
                 </div>
               )}
-              {exam.regressions.length > 0 && <div className="notice" style={{ borderColor: "#f3c1c1", background: "#fff3f3" }}>Worse than the baseline: {exam.regressions.join("; ")}</div>}
-              <details><summary className="muted">Where the judge disagreed with the answer key ({exam.last.outcomes.filter((o) => o.got !== o.expected).length})</summary>
+              <details><summary className="muted">Every disagreement with the answer key in this run ({exam.last.outcomes.filter((o) => o.got !== o.expected).length})</summary>
                 <table><tbody>{exam.last.outcomes.filter((o) => o.got !== o.expected).map((o) => <tr key={o.id + o.team}><td>{o.id}</td><td>{o.team}</td><td>expected {o.expected}</td><td>got {o.got}{o.evidenceOk ? "" : " (no evidence)"}</td><td className="muted">{o.why ?? ""}</td></tr>)}</tbody></table>
               </details>
-            </>
-          ) : <div className="muted">No exam run yet.</div>}
+
+              <div className="card" style={{ marginTop: 12 }}>
+                <strong>Make this run the baseline?</strong>
+                <div className="muted">Do it when the run is at least as good as the baseline, or when every drop is explained above (a new item, or a borderline call). Later runs are then compared with this one.</div>
+                <div className="row" style={{ marginTop: 8 }}>
+                  {cmp.verdict === "baseline"
+                    ? <span className="muted">✓ This run is already the baseline.</span>
+                    : <form action={saveExamBaseline}><button className="secondary">Make this run the baseline</button></form>}
+                </div>
+              </div>
+            </>);
+          })() : <div className="muted">No eval run yet.</div>}
           <div className="row" style={{ marginTop: 8 }}>
-            <form action={runExam}><button disabled={exam.running}>{exam.running ? "Exam running…" : "Run the exam"}</button></form>
-            {exam.last && <form action={saveExamBaseline}><button className="secondary">Use this result as the baseline</button></form>}
-            {exam.last && <a href="/ops/exam-report" className="muted">Download the report (one file, with the judge's reasons)</a>}
+            <form action={runExam}><button disabled={exam.running}>{exam.running ? "Running…" : "Run the evals"}</button></form>
+            {exam.last && <a href="/ops/evals-report" className="muted">Download the full report (one Markdown file, with the judge&apos;s reasons)</a>}
           </div>
       </>)}
 
