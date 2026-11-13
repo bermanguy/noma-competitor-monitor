@@ -30,6 +30,7 @@ describe("roles", () => {
     expect(allowedPath(maya, "/ops/runs")).toBe("/");
     expect(allowedPath(maya, "/settings/preview")).toBe("/settings/preview");
     expect(allowedPath(BUILDER, "/ops/runs")).toBe("/ops/runs");
+    expect(allowedPath(maya, "/ops/overview")).toBe("/");
   });
 
   it("starts with an owner and a member in each team", async () => {

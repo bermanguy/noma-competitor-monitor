@@ -91,6 +91,8 @@ When a score drops, we find the cause before changing anything: a wrong answer k
 
 Runs unattended every 3 hours. Retries with backoff; one source failing never stops the run; idempotent deliveries; per-run and per-month cost caps checked before each call; silent-breakage checks (quiet longer than usual, content shrank); an external heartbeat for missed runs; three Slack audiences so nobody filters someone else's noise (teams get news, the owner gets decisions, ops gets breakages). Fetched text is treated as untrusted data, never instructions; outbound fetches refuse private network addresses; secrets live only in Render environment variables. A canary page we control proves the whole path end to end on demand.
 
+**Monitoring.** Builder › Overview shows eight numbers, each with a target and the table it is computed from: runs on schedule (≥ 95% of 3-hour slots), clean runs (≥ 90%), healthy sources (≥ 90%), Slack delivery (≥ 99%), exam precision for the weakest team (≥ 85%), quotes verified (≥ 95%), rated useful (≥ 60% 👍) and model spend (< 80% of the monthly cap). Under them is the alert-rule table, in the shape Grafana alert rules and Datadog monitors share: condition, evaluation, pending period, severity, channel. Seven rules are active today (missed run via healthchecks.io; crash, failing or quiet or shrinking source, failed Slack post and budget cap from the pipeline, all to `#competitors-ops`). Five are drafts for the AI-quality and cost numbers; the "New rule" form previews editing and is not wired yet.
+
 ## 7. Rollout, what was left out, and what's next
 
 **This is an MVP, and the rollout is part of the design** ([0015](decisions/0015-mvp-rollout-with-owners-first.md)). It goes first to the area owners and a few business users per team. For the first weeks the goal is validation, not reach: are the updates accurate, is each team getting the right level, and what's missing? Every vote feeds the exam (section 5), so we tune accuracy with them before widening the audience. Only then do we add sources.
@@ -105,6 +107,7 @@ Next, in order:
 4. **Each area head labels their own team's answers** in the exam, instead of the product owner standing in.
 5. **Sonnet as the judge**, if the exam shows per-team precision holds, at about half the cost.
 6. **Queue and workers**, when competitors pass about 50.
+7. **Grafana Cloud for monitoring history and on-call.** Point a read-only Postgres user at the same queries the Overview uses, move the alert rules into Grafana alerting and route criticals to on-call. Left out for now: it means opening the database to outside access, about half a day, and the in-app page tells the same story.
 
 ## 8. Risks
 

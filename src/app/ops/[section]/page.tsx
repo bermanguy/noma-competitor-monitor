@@ -1,6 +1,6 @@
 import { desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { competitor, feedback, item, judgment, run, setting, source, usage } from "@/db/schema";
+import { competitor, delivery, feedback, item, judgment, run, setting, source, usage } from "@/db/schema";
 import { config } from "@/config";
 import { DEFAULT_CANARY_PRICING } from "@/lib/canary";
 import { sourceHealth } from "@/pipeline/health";
@@ -9,9 +9,12 @@ import { examState } from "@/eval/run";
 import { ownerItemResults, pct } from "@/eval/score";
 import { ownerGolden } from "@/eval/owner-golden";
 import { notFound } from "next/navigation";
+import { computeMetrics } from "@/lib/monitoring";
+import { MonitoringOverview } from "@/components/MonitoringOverview";
 import { OPS_SECTIONS, subLabel, type OpsSection } from "@/lib/nav";
 
 const LEAD: Record<OpsSection, string> = {
+  overview: "The health of the system in eight numbers, each with its target, and the alert rules that watch them.",
   runs: "Every run of the pipeline, newest first.",
   sources: "Every page and feed we read, and whether it is healthy.",
   errors: "Items that failed or were held back, so nothing is lost silently.",
@@ -55,6 +58,13 @@ export default async function Ops({ params, searchParams }: { params: Promise<{ 
       <h1>{subLabel("builder", section)}</h1>
       <p className="lead">{LEAD[section]}</p>
       {msg && <div className="notice">{msg}</div>}
+
+      {on("overview") && (
+        <MonitoringOverview
+          metrics={await computeMetrics(d)}
+          recentAlerts={(await d.select({ at: delivery.createdAt, key: delivery.key }).from(delivery).where(eq(delivery.kind, "ops")).orderBy(desc(delivery.id)).limit(5))}
+        />
+      )}
 
       {on("runs") && (<>
       <div className="row" style={{ marginBottom: 12 }}>
