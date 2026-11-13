@@ -3,7 +3,7 @@
  * The business meaning (team lenses, topic descriptions, level definitions) is owner-owned
  * and comes from src/prompts/owner/ and the database. Bump PROMPT_VERSION on any change here.
  */
-export const PROMPT_VERSION = "judge-v5";
+export const PROMPT_VERSION = "judge-v6";
 export const PRICING_VERSION = "pricing-v1";
 export const GATE_VERSION = "gate-v1";
 export const SUGGEST_VERSION = "suggest-v1";

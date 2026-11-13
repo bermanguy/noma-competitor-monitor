@@ -33,7 +33,8 @@ export interface CallOpts<S extends z.ZodType> {
   purpose: string;
   model: string;
   system: string;
-  user: string;
+  /** One string, or [shared, specific]: the shared part is cached so later calls on the same item reuse it. */
+  user: string | string[];
   schema: S;
   maxTokens?: number;
 }
@@ -55,7 +56,12 @@ export async function structuredCall<S extends z.ZodType>(o: CallOpts<S>): Promi
     model: o.model,
     max_tokens: o.maxTokens ?? 4000,
     system: o.system,
-    messages: [{ role: "user", content: o.user }],
+    messages: [{
+      role: "user",
+      content: typeof o.user === "string"
+        ? o.user
+        : o.user.map((text, n) => (n === 0 && o.user.length > 1 ? { type: "text" as const, text, cache_control: { type: "ephemeral" as const } } : { type: "text" as const, text })),
+    }],
     output_config: { format: betaZodOutputFormat(o.schema), effort: "medium" },
     ...fallback,
   });
@@ -66,7 +72,8 @@ export async function structuredCall<S extends z.ZodType>(o: CallOpts<S>): Promi
     model: res.model,
     inputTokens: res.usage.input_tokens,
     outputTokens: res.usage.output_tokens,
-    costUsd: costUsd(res.model, res.usage.input_tokens, res.usage.output_tokens),
+    // Cache writes cost 1.25x the input price and cache reads 0.1x.
+    costUsd: costUsd(res.model, res.usage.input_tokens + 1.25 * (res.usage.cache_creation_input_tokens ?? 0) + 0.1 * (res.usage.cache_read_input_tokens ?? 0), res.usage.output_tokens),
   });
 
   if (res.stop_reason === "refusal") throw new Refused(`model declined (${res.stop_details?.category ?? "unknown"})`);

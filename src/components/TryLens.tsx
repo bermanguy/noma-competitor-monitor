@@ -22,7 +22,7 @@ export function TryLens({ teamKey, teamName, lens, tryAction, saveAction, checki
       <input type="hidden" name="key" value={teamKey} />
       <input type="hidden" name="back" value={`/settings/preview?team=${teamKey}`} />
       <strong>Fine-tune what {teamName} gets</strong>
-      <p className="muted" style={{ margin: "4px 0 8px" }}>This is the brief the system reads when it decides what matters to {teamName}. <strong>1.</strong> Edit it. <strong>2.</strong> Try it on your latest changes (a few seconds). <strong>3.</strong> Save: before it goes live, it is checked on {total ?? "all"} test posts for every team (about 2 minutes), so a fix for {teamName} can&apos;t quietly make another team&apos;s updates worse.</p>
+      <p className="muted" style={{ margin: "4px 0 8px" }}>This is the brief the system reads when it decides what matters to {teamName}. <strong>1.</strong> Edit it. <strong>2.</strong> Try it on your latest changes: each one is judged again with the current wording and with yours, side by side (about 20 seconds). <strong>3.</strong> Save: before it goes live, it is checked on {total ?? "all"} test posts (about 2 minutes). Each team is judged on its own, so your wording can&apos;t change another team&apos;s updates.</p>
       {/* Remounted after each trial, so the box keeps exactly what the owner tried. */}
       <textarea key={state.lens ?? ""} name="lens" defaultValue={state.lens ?? lens} style={{ minHeight: 140 }} />
       <div className="row" style={{ marginTop: 8, gap: 8 }}>
@@ -39,7 +39,7 @@ export function TryLens({ teamKey, teamName, lens, tryAction, saveAction, checki
               <div key={t.itemId} className={`trial${moved ? " moved" : ""}`}>
                 <div className="trial-t"><span className="muted">{t.competitor}</span> <a href={t.url} target="_blank" rel="noreferrer">{t.title}</a></div>
                 <div className="trial-cols">
-                  <div><div className="trial-l">Today</div><Tag level={t.before.level} /><p>{t.before.why}</p></div>
+                  <div><div className="trial-l">Current wording</div><Tag level={t.before.level} />{t.sent !== t.before.level && <span className="muted small"> (sent as {LEVEL[t.sent] ?? t.sent})</span>}<p>{t.before.why}</p></div>
                   <div><div className="trial-l">With your edit</div>{t.after ? <><Tag level={t.after.level} /><p>{t.after.why}</p></> : <p className="muted">{t.error}</p>}</div>
                 </div>
               </div>

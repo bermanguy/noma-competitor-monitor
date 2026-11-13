@@ -7,6 +7,7 @@ import { localDateTime } from "../lib/time";
 import { claimRunner, examState, releaseRunner, runEval, setBaseline, setLast, type EvalResult } from "./run";
 import { examItems, goldenAnswers, regrade, type AnswerOverrides } from "./owner-golden";
 import { scoreTeams, type Outcome } from "./score";
+import { PROMPT_VERSION } from "../prompts/scaffold";
 
 /**
  * An owner's edit to their team's description goes live only after it is checked on the golden set.
@@ -16,8 +17,9 @@ import { scoreTeams, type Outcome } from "./score";
  * new baseline. If a team got worse, the owner sees exactly which posts, and can narrow the wording,
  * correct their own team's answer key, or save anyway (the builder is told).
  *
- * One edit can change other teams' answers too, because one judge call decides for every team. That is
- * why the check covers all teams, and why an owner can only correct their own team's answers.
+ * Each team is judged in its own call that holds only that team's description, so an edit cannot change
+ * another team's answers. The check therefore re-judges only the edited team; the other teams' answers
+ * are carried over from the baseline unchanged. An owner can only correct their own team's answers.
  */
 
 const RANK: Record<Level, number> = { none: 0, log: 1, digest: 2, alert: 3 };
@@ -132,14 +134,31 @@ export async function startEditCheck(db: DB, teamKey: string, lens: string, by: 
 
 async function finishEditCheck(db: DB, id: number, teamKey: string, lens: string, baseline: EvalResult | null) {
   try {
-    const result = await runEval(db, { lens: { teamKey, lens }, items: await examItems(db) });
-    await db.update(teamEdit).set({ result, status: "ready" }).where(eq(teamEdit.id, id));
-    const v = verdictFor(result, baseline, await goldenAnswers(db));
+    const items = await examItems(db);
+    const draft = await runEval(db, { lens: { teamKey, lens }, items, teams: [teamKey] });
+    // Compare with the baseline when it was judged the same way. Otherwise (no baseline yet, or one from
+    // an older prompt) judge the current wording now too, so the only difference is the edit.
+    const comparable = baseline && baseline.promptVersion === PROMPT_VERSION ? baseline : null;
+    const before = comparable ?? (await runEval(db, { items, teams: [teamKey] }));
+    const others = (comparable ?? baseline)?.outcomes.filter((o) => o.team !== teamKey) ?? [];
+    const othersVersion = (comparable ?? baseline)?.promptVersion ?? PROMPT_VERSION;
+    const result = mergeRun(draft, others, othersVersion);
+    const against = comparable ?? mergeRun(before, others, othersVersion);
+    await db.update(teamEdit).set({ result, baseline: against, status: "ready" }).where(eq(teamEdit.id, id));
+    const v = verdictFor(result, against, await goldenAnswers(db));
     if (v.ok) await applyEdit(db, id, "saved");
   } catch (e) {
     console.error("edit check failed", e);
     await db.update(teamEdit).set({ status: "failed", error: (e as Error).message.slice(0, 300) }).where(eq(teamEdit.id, id));
   }
+}
+
+/** A run for one team, completed with the other teams' answers carried over unchanged. */
+function mergeRun(run: EvalResult, others: Outcome[], othersVersion: string): EvalResult {
+  const outcomes = [...run.outcomes, ...others];
+  // Answers judged by an older prompt make the run "mixed", so a later check won't treat it as comparable.
+  const promptVersion = othersVersion === run.promptVersion ? run.promptVersion : `${run.promptVersion}+mixed`;
+  return { ...run, promptVersion, outcomes, scores: scoreTeams(outcomes) };
 }
 
 /**

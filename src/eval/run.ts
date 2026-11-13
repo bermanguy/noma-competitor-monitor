@@ -34,7 +34,7 @@ export interface StoryCheck { id: string; expected: number | null; got: number |
  * Judges every labelled golden item with the prompt context found in this database, and grades it per team.
  * Without explicit items it runs the live exam: the golden files plus the items the owner added in the app.
  */
-export async function runEval(db: DB, opts: { model?: string; only?: string[]; items?: GoldenItem[]; lens?: { teamKey: string; lens: string } } = {}): Promise<EvalResult> {
+export async function runEval(db: DB, opts: { model?: string; only?: string[]; items?: GoldenItem[]; lens?: { teamKey: string; lens: string }; teams?: string[] } = {}): Promise<EvalResult> {
   const model = opts.model ?? config.judgeModel;
   const all = opts.items ?? (await examItems(db));
   const items = all.filter((g) => !opts.only || opts.only.includes(g.id));
@@ -42,6 +42,8 @@ export async function runEval(db: DB, opts: { model?: string; only?: string[]; i
   const ctx = await loadContext(db);
   // A draft team description, tried on the golden set before it goes live.
   if (opts.lens) ctx.teams = ctx.teams.map((t) => (t.key === opts.lens!.teamKey ? { ...t, lens: opts.lens!.lens } : t));
+  // Each team is judged in its own call, so a run can cover just some teams.
+  if (opts.teams) ctx.teams = ctx.teams.filter((t) => opts.teams!.includes(t.key));
   const teamKeys = ctx.teams.map((t) => t.key);
   const before = (await spend(db)).month;
 

@@ -322,7 +322,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
               </select>
             </div>
             <textarea name="lens" defaultValue={t.lens} style={{ marginTop: 8, minHeight: 150 }} />
-            <div className="muted small" style={{ marginTop: 6 }}>A new description is checked on the test posts for every team before it goes live (about 2 minutes).</div>
+            <div className="muted small" style={{ marginTop: 6 }}>A new description is checked on the test posts before it goes live (about 2 minutes). Each team is judged on its own, so it can't change another team's updates.</div>
             <button style={{ marginTop: 8 }}>Save and check</button>
           </form>
         ) : (

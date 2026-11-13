@@ -51,7 +51,7 @@ flowchart TD
 | 3 | Extract | Mozilla Readability for main text; for listing pages, article links under the listing's path | Extraction settings are fixed per source so they can't create fake diffs |
 | 4 | Detect | Posts: canonical URL not seen before. Pages: normalised main text differs from the last snapshot by more than a minimum size | First crawl of any source is a silent baseline |
 | 5a | Change gate | Small model decides "meaningful or cosmetic" for page changes, quoting the changed words | Cosmetic changes are kept and visible, just not judged or sent |
-| 5b | Judge | One call per item returns a judgment for every team | Retries on API errors; a run stops judging once the budget cap is hit and resumes next run |
+| 5b | Judge | One call per team per item; the item text is a cached prefix shared by the calls | Retries on API errors; a run stops judging once the budget cap is hit and resumes next run |
 | 6 | Evidence check | Each evidence quote must appear verbatim in the source text | Quotes not in the source are dropped; a sent judgment left with none gets one quotes-only retry. If that fails it is held back and shown to the Builder, never sent (decision 0009) |
 | 7 | Route | Applies each team's noise setting and daily cap | Pure function of stored data, safe to re-run |
 | 8 | Notify | Posts to the team's Slack channel; records each delivery with a unique key | A retry never double-posts |
@@ -97,7 +97,7 @@ All model calls use structured outputs (a Zod schema with `client.messages.parse
 
 ## The judgment
 
-One call per item returns, for each team:
+One call per team per item returns ([0017](decisions/0017-judge-each-team-separately.md)):
 
 | Field | Meaning |
 | --- | --- |
@@ -195,7 +195,7 @@ docs/               scope, architecture, decisions, research
 | --- | --- | --- |
 | 4 to 50 competitors | Same design; a run is minutes of I/O | Fetch concurrency limit per domain; more frequent runs |
 | 50 to 500 competitors | Stage-per-table design | Move from one cron process to a job queue with workers; Firecrawl or a managed scraper for hard sites |
-| More teams or topics | One judgment call covers all teams | Prompt size; split into per-team calls past ~6 teams |
+| More teams or topics | One call per team, item text cached | Calls grow with teams × items; batch them at volume |
 | More volume per team | Levels, caps, same-story linking per competitor | Clustering duplicates across competitors and sources (embeddings) |
 
 ## Confirm-first choices (confirmed by Guy, 2026-11-12)

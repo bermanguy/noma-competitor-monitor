@@ -29,7 +29,7 @@ flowchart LR
 | Extract | Main text via Readability; article links from listing pages | Fixed settings per source, so extraction can't invent diffs |
 | Detect | New post = URL never seen. Page change = normalised text changed by more than a minimum size | First crawl is a silent baseline (except the latest 3 posts, 0006) |
 | Gate | Small model: "meaningful or cosmetic?" for page changes, quoting the changed words | Cosmetic changes are logged and visible, just not sent |
-| Judge | One call per item returns a level, a reason, quotes and topics **for every team** | Structured output, validated before storing; budget cap per run and per month |
+| Judge | One call per team per item returns a level, a reason, quotes and topics; each call sees only that team's description (0017) | Structured output, validated before storing; budget cap per run and per month |
 | Evidence check | Every quote must appear word for word in the source | A bad quote gets one retry; still bad means held back, never sent (0009) |
 | Route and notify | Applies each team's noise setting; posts alerts now, digests each morning | Every delivery has a unique key, so a re-run never double-posts |
 | Health | Flags failing, empty or unusually quiet sources; posts to the ops channel | An outside heartbeat alerts if runs stop entirely |
@@ -65,7 +65,7 @@ Every stage writes its result before the next one reads it. Any stage can crash 
 | 4 to 50 competitors | Same design; a run is minutes of I/O. Adding one is a domain typed in Settings | Fetch concurrency per domain; more frequent runs |
 | 50 to 500 competitors | Stage-per-table design, idempotent keys | One cron process becomes a queue with workers; managed scraper for hard sites |
 | More topics | Topics are owner text; the judge tags any that fit | Prompt size, then topic groups |
-| More teams (consumers) | One judgment call covers all teams; each team is a lens, a channel and a noise setting | Past about 6 teams, split into per-team calls |
+| More teams (consumers) | Each team is a lens, a channel and a noise setting, judged in its own call; the item text is cached, so a team adds little cost | Cost grows with teams × items; batch the calls at volume |
 | More volume per team | Levels, a daily Urgent cap, same-story linking | Cross-source duplicate clustering with embeddings |
 
 ## 5. How we know it's useful, and how it improves
@@ -85,7 +85,7 @@ When a score drops, we find the cause before changing anything: a wrong answer k
 
 **After it ships: team feedback.** Every alert has 👍/👎 and every digest has one rating link. A vote pings the right owner in the owners' channel (0011). In Settings, the owner sees every "not useful" vote, picks the level each team should have got, and **adds it to the golden set** with one click. The live system's mistakes become tomorrow's test questions, so quality can only ratchet up.
 
-**Owners tune without the Builder.** When an owner saves a new team description, it is not live yet: the evals run on the draft in the background (about 2 minutes) and compare every team against the saved baseline. If nothing got worse, it goes live by itself and becomes the new baseline. If something did, the owner sees the exact test posts per team and chooses: narrow the wording, update the answer key for their own team only (another team's answers are locked to that team's owner), or save anyway, which notes it in the ops channel. To allow for the judge's natural variance, a team blocks only when two or more answers get worse, or on any new severe miss. A weekly scheduled eval run catches drift from model changes and posts to ops if a team regressed.
+**Owners tune without the Builder.** When an owner saves a new team description, it is not live yet: the evals re-judge that team's answers with the draft in the background (about 2 minutes) and compare them with the saved baseline. Each team is judged in its own call, so the edit cannot move another team's answers; those are carried over unchanged. If nothing got worse, it goes live by itself and becomes the new baseline. If something did, the owner sees the exact test posts per team and chooses: narrow the wording, update their own team's answer key, or save anyway, which notes it in the ops channel. To allow for the judge's natural variance (about 1 answer in 30 moves a level between runs, and current models no longer accept a temperature setting), the edit is held only when two or more answers get worse, or on any new severe miss. A weekly scheduled eval run catches drift from model changes and posts to ops if a team regressed.
 
 **Honest limit:** the first answer key is our judgment of what the teams want. Real votes replace it within weeks, and the design makes that the default path.
 
