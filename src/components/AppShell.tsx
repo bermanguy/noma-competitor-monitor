@@ -32,11 +32,13 @@ const GROUPS: { role: Role; label: string }[] = [{ role: "builder", label: "Buil
 
 export function AppShell({ viewer, viewers, counts, children }: { viewer: Viewer; viewers: Viewer[]; counts: Partial<Record<BadgeKey, number>>; children: ReactNode }) {
   const path = usePathname();
-  const [menu, setMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  // The View as panel opens next to whichever control opened it: the name in the rail, or the pill at the top.
+  const [menu, setMenu] = useState<false | "rail" | "top">(false);
+  const railRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!menu) return;
-    const close = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as Node)) setMenu(false); };
+    const close = (e: MouseEvent) => { if (!(menu === "rail" ? railRef : topRef).current?.contains(e.target as Node)) setMenu(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setMenu(false); };
     document.addEventListener("mousedown", close);
     document.addEventListener("keydown", esc);
@@ -52,6 +54,32 @@ export function AppShell({ viewer, viewers, counts, children }: { viewer: Viewer
   const railBadge = (k: RailKey) => RAIL.find((r) => r.key === k)!.groups.flatMap((g) => g.items).reduce((n, i) => n + (i.badge ? counts[i.badge] ?? 0 : 0), 0);
   const hasPanel = !!rail && rail.groups.length > 0;
 
+  const panel = (
+    <div className={`user-menu${menu === "top" ? " at-top" : ""}`} role="menu">
+      <div className="user-me"><Avatar v={viewer} /><div><strong>{viewer.name}</strong><div className="muted">{viewer.title}</div><div className="role-line">{roleLine(viewer)}</div></div></div>
+      <div className="user-scroll">
+        {GROUPS.map((g) => {
+          const list = viewers.filter((v) => v.role === g.role);
+          if (!list.length) return null;
+          return (
+            <div key={g.role}>
+              <div className="user-label">View as {g.label.toLowerCase()}</div>
+              {list.map((v) => (
+                <a key={v.key} role="menuitemradio" aria-checked={v.key === viewer.key} className={`user-opt${v.key === viewer.key ? " on" : ""}`}
+                  href={`/view-as?as=${v.key}&next=${encodeURIComponent(path)}`}>
+                  <Avatar v={v} size={28} /><span><strong>{v.name}</strong> <span className="muted">{v.title}</span></span>
+                  {v.team && <span className="team-chip">{TEAM_NAME[v.team] ?? v.team}</span>}
+                  {v.key === viewer.key && <span className="check">✓</span>}
+                </a>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      <div className="user-foot">Builder sees everything. Owners set up their own team. Members read their team&apos;s changes, and get them in Slack.</div>
+    </div>
+  );
+
   return (
     <div className="shell">
       <nav className="rail" aria-label="Main">
@@ -66,36 +94,12 @@ export function AppShell({ viewer, viewers, counts, children }: { viewer: Viewer
           );
         })}
         <div className="rail-spacer" />
-        <div className="rail-user" ref={menuRef}>
-          <button type="button" className={`rail-item${menu ? " on" : ""}`} onClick={() => setMenu(!menu)} aria-haspopup="menu" aria-expanded={menu}>
+        <div className="rail-user" ref={railRef}>
+          <button type="button" className={`rail-item${menu === "rail" ? " on" : ""}`} onClick={() => setMenu(menu === "rail" ? false : "rail")} aria-haspopup="menu" aria-expanded={menu === "rail"}>
             <span className="rail-avatar"><Avatar v={viewer} /><span className="online" /></span>
             {viewer.name}
           </button>
-          {menu && (
-            <div className="user-menu" role="menu">
-              <div className="user-me"><Avatar v={viewer} /><div><strong>{viewer.name}</strong><div className="muted">{viewer.title}</div><div className="role-line">{roleLine(viewer)}</div></div></div>
-              <div className="user-scroll">
-                {GROUPS.map((g) => {
-                  const list = viewers.filter((v) => v.role === g.role);
-                  if (!list.length) return null;
-                  return (
-                    <div key={g.role}>
-                      <div className="user-label">View as {g.label.toLowerCase()}</div>
-                      {list.map((v) => (
-                        <a key={v.key} role="menuitemradio" aria-checked={v.key === viewer.key} className={`user-opt${v.key === viewer.key ? " on" : ""}`}
-                          href={`/view-as?as=${v.key}&next=${encodeURIComponent(path)}`}>
-                          <Avatar v={v} size={28} /><span><strong>{v.name}</strong> <span className="muted">{v.title}</span></span>
-                          {v.team && <span className="team-chip">{TEAM_NAME[v.team] ?? v.team}</span>}
-                          {v.key === viewer.key && <span className="check">✓</span>}
-                        </a>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="user-foot">Builder sees everything. Owners set up their own team. Members read their team&apos;s changes, and get them in Slack.</div>
-            </div>
-          )}
+          {menu === "rail" && panel}
         </div>
       </nav>
 
@@ -125,9 +129,12 @@ export function AppShell({ viewer, viewers, counts, children }: { viewer: Viewer
           <nav className="crumbs" aria-label="Breadcrumb">
             {rail && (sub ? <><a href={rail.href}>{rail.label}</a><span className="sep">/</span><strong>{sub.label}</strong></> : <strong>{rail.label}</strong>)}
           </nav>
-          <button type="button" className="viewing" onClick={() => setMenu(true)} title="Change who you are viewing as">
-            <Avatar v={viewer} size={22} />Viewing as {viewer.name} · {roleLine(viewer)}
-          </button>
+          <div className="viewing-wrap" ref={topRef}>
+            <button type="button" className="viewing" onClick={() => setMenu(menu === "top" ? false : "top")} title="Change who you are viewing as" aria-haspopup="menu" aria-expanded={menu === "top"}>
+              <Avatar v={viewer} size={22} />Viewing as {viewer.name} · {roleLine(viewer)}
+            </button>
+            {menu === "top" && panel}
+          </div>
         </div>
         <main>{children}</main>
       </section>
