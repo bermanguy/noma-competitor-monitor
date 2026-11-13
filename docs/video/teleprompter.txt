@@ -5,7 +5,7 @@ Noma's competitors publish something almost every week. Today, someone skims the
 
 So I built a competitor monitor. It judges every change once for each team, and tells each team only what clears its own bar, with proof.
 
-[ 3-second pause, look at camera ]
+[ 1 second of silence, then stop recording ]
 
 
 SCENE 2
@@ -19,7 +19,7 @@ Then Claude judges each change once, for all three teams: a level, a one-line re
 
 Three kinds of people use it. Team members get Slack. Each team's owner sets things up in the web app. And I, the builder, have a separate area for sources, runs and quality.
 
-[ 3-second pause, look at camera ]
+[ 1 second of silence, then stop recording ]
 
 
 SCENE 3
@@ -33,7 +33,7 @@ We use four named levels, not a score from one to ten. Models squeeze scores tow
 
 And most changes never reach anyone. This one is a cosmetic edit on a page. It's logged here, and not sent.
 
-[ 3-second pause, look at camera ]
+[ 1 second of silence, then stop recording ]
 
 
 SCENE 4
@@ -45,7 +45,7 @@ Everything less urgent arrives once, in the morning, as a short digest grouped b
 
 Teams already live in Slack, so that's where it goes.
 
-[ 3-second pause, look at camera ]
+[ 1 second of silence, then stop recording ]
 
 
 SCENE 5
@@ -57,7 +57,7 @@ Tamar, on the Product team, disagrees. She presses Not useful and writes why.
 
 The vote goes straight to the owners' channel, and pings Maya, who owns Product.
 
-[ 3-second pause, look at camera ]
+[ 1 second of silence, then stop recording ]
 
 
 SCENE 6
@@ -81,7 +81,7 @@ One more thing. This only changes what happens next. The alert Tamar got stays i
 
 A complaint became a better rule and a passing test, in two minutes, with no builder involved.
 
-[ 3-second pause, look at camera ]
+[ 1 second of silence, then stop recording ]
 
 
 SCENE 7
@@ -93,7 +93,7 @@ The system reads the site's menu and finds where it publishes: its blog, its new
 
 The first check reads each page now, so from the next run, anything new gets judged. Removing a competitor later hides it, but never deletes its history.
 
-[ 3-second pause, look at camera ]
+[ 1 second of silence, then stop recording ]
 
 
 SCENE 8
@@ -105,7 +105,7 @@ This is my area, as the builder. Eight numbers, each with a target: runs on sche
 
 When a source breaks, or a site starts blocking us, the others keep running, and the alert comes to the ops channel, not to the teams.
 
-[ 3-second pause, look at camera ]
+[ 1 second of silence, then stop recording ]
 
 
 SCENE 9
@@ -117,4 +117,4 @@ The rollout is part of the design. First, the three owners and a few users per t
 
 I built it with Claude Code as my pair programmer, and Claude models do the judging. Thanks for watching.
 
-[ 3-second pause, look at camera ]
+[ 1 second of silence, then stop recording ]

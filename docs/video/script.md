@@ -1,6 +1,6 @@
 # Demo video: scene-by-scene script
 
-About 8 minutes when read slowly (about 860 spoken words at 120 words a minute, plus slides and clicks). Recorded as one take, with a webcam circle over the screen recording. A short title slide goes before each scene, added in editing. The plain words to read, with nothing else, are in [teleprompter.txt](teleprompter.txt).
+About 8 minutes when read slowly (about 880 spoken words at 120 words a minute, plus slides and clicks). Recorded as nine short clips, one per scene, with a webcam circle over the screen recording in scenes 2 to 8. A title slide goes before each scene, added by one command. See [edit/README.md](edit/README.md) for how to record and join the clips. The plain words to read, with nothing else, are in [teleprompter.txt](teleprompter.txt).
 
 The brief asks for a video of "no more than five minutes" in which we present what we built, why, the decisions that mattered, what we left out, and a demo where we configure the system the way its users would. Each scene below names the grading criterion it proves.
 
@@ -225,16 +225,16 @@ Do a full dry run on the live site about an hour before, **without pressing Save
 - **Browser.** Zoom to 125%, hide bookmarks and other tabs, and sign in with the shared password before you start. Copy the scene 6 sentence to the clipboard.
 - **Camera circle.** Each scene says where to put it, so it never covers what you point at.
 
-## Recording one take, ready for editing
+## Recording
 
-- At the end of each scene, **stop for three seconds and look at the camera**. Those silences are the cut points for the title slides.
-- If you stumble, pause, then restart the whole sentence. The silence makes the bad take easy to find and cut.
-- Before each scene, say the scene number out loud ("Scene six"), then pause. It makes the cut points easy to find in the transcript, and it's removed in editing.
+Record each scene as its own clip, and wait one second in silence at the start and end of each one. The full steps and the editing command are in [edit/README.md](edit/README.md).
+
+- If you stumble, record the whole scene again. Two takes at most.
 - Speak slower than feels natural. The word counts above already assume a slow pace.
 
 ## Title slides for editing
 
-One slide per scene, about 3 seconds each, in this order. The titles are also the first line of each scene above, so Claude Code can build the slides and the cuts from this file.
+One slide per scene, 3 seconds each, already made in `edit/slides/`. The stitch script puts each one before its scene.
 
 1. Know what matters, team by team
 2. How it works, in one picture
