@@ -9,7 +9,8 @@ import { discoverSources } from "@/pipeline/discover";
 import { archiveCompetitor, createCompetitor, normalizeDomain } from "@/lib/competitors";
 import { OWNER_TEXTS, restoreOwnerText, setOwnerText, type OwnerTextKey } from "@/lib/owner-text";
 import { applySuggestion, dismissSuggestion } from "@/pipeline/own-site";
-import { addToExam } from "@/eval/owner-golden";
+import { addToExam, setGoldenAnswer } from "@/eval/owner-golden";
+import { applyEdit, discardEdit, getEdit, startEditCheck } from "@/eval/team-edit";
 import type { Level } from "@/db/schema";
 import { currentViewer } from "@/lib/viewer";
 import { canEditTeam, canManagePeople } from "@/lib/view-as";
@@ -117,9 +118,53 @@ export async function updateTeam(form: FormData) {
   const key = String(form.get("key"));
   if (!canEditTeam(await currentViewer(), key)) redirect(back + sep + "error=" + encodeURIComponent("Only that team's owner (or the builder) can change its description"));
   if (lens.length < 40) redirect(back + sep + "error=" + encodeURIComponent("Describe what the team cares about in at least a sentence or two"));
-  await db().update(team).set(form.has("noise") ? { lens, noise } : { lens }).where(eq(team.key, key));
+  // How often the team hears from us is saved right away. A new description is checked on the
+  // golden set first, and goes live by itself if nothing gets worse.
+  if (form.has("noise")) await db().update(team).set({ noise }).where(eq(team.key, key));
+  const [current] = await db().select().from(team).where(eq(team.key, key));
   revalidatePath("/settings", "layout");
+  if (current && current.lens.trim() !== lens) {
+    const r = await startEditCheck(db(), key, lens, (await currentViewer()).name);
+    if ("error" in r) redirect(back + sep + "error=" + encodeURIComponent(r.error));
+    redirect(back);
+  }
   redirect(back + sep + "added=" + encodeURIComponent("Saved. Changes apply from the next check."));
+}
+
+/** The owner's choice on an edit the check held back: save it now, save anyway, or discard it. */
+export async function decideTeamEdit(form: FormData) {
+  const id = Number(form.get("id"));
+  const op = String(form.get("op"));
+  const e = await getEdit(db(), id);
+  const viewer = await currentViewer();
+  if (!e || !canEditTeam(viewer, e.teamKey)) redirect("/settings/preview?error=" + encodeURIComponent("Only that team's owner can decide on this edit"));
+  const back = viewer.role === "builder" ? `/settings/preview?team=${e!.teamKey}` : "/settings/preview";
+  const sep = back.includes("?") ? "&" : "?";
+  if (op === "discard") {
+    await discardEdit(db(), id);
+    revalidatePath("/settings", "layout");
+    redirect(back + sep + "added=" + encodeURIComponent("Discarded. The description is unchanged."));
+  }
+  const ok = await applyEdit(db(), id, op === "anyway" ? "saved_anyway" : "saved", viewer.name);
+  revalidatePath("/", "layout");
+  redirect(back + sep + (ok
+    ? "added=" + encodeURIComponent(op === "anyway" ? "Saved anyway. It applies from the next check, and the Builder was told in the ops channel." : "Saved. It applies from the next check.")
+    : "error=" + encodeURIComponent("That edit was already decided")));
+}
+
+/** A team owner corrects their own team's answer for one test post in the golden set. */
+export async function setTeamAnswer(form: FormData) {
+  const goldenId = String(form.get("goldenId"));
+  const teamKey = String(form.get("team"));
+  const level = String(form.get("level")) as Level;
+  const viewer = await currentViewer();
+  const back = viewer.role === "builder" ? `/settings/preview?team=${teamKey}` : "/settings/preview";
+  const sep = back.includes("?") ? "&" : "?";
+  if (!canEditTeam(viewer, teamKey)) redirect(back + sep + "error=" + encodeURIComponent("You can only change your own team's answers"));
+  if (!["alert", "digest", "log", "none"].includes(level)) redirect(back);
+  await setGoldenAnswer(db(), goldenId, teamKey, level, viewer.name);
+  revalidatePath("/", "layout");
+  redirect(back + sep + "added=" + encodeURIComponent("Answer key updated for your team. The check below is re-graded with it."));
 }
 
 /** The owner approves a suggestion from Noma's site, after editing the profile text and ticking the topic changes they want. */

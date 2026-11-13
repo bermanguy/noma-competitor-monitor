@@ -85,6 +85,8 @@ When a score drops, we find the cause before changing anything: a wrong answer k
 
 **After it ships: team feedback.** Every alert has 👍/👎 and every digest has one rating link. A vote pings the right owner in the owners' channel (0011). In Settings, the owner sees every "not useful" vote, picks the level each team should have got, and **adds it to the golden set** with one click. The live system's mistakes become tomorrow's test questions, so quality can only ratchet up.
 
+**Owners tune without the Builder.** When an owner saves a new team description, it is not live yet: the evals run on the draft in the background (about 2 minutes) and compare every team against the saved baseline. If nothing got worse, it goes live by itself and becomes the new baseline. If something did, the owner sees the exact test posts per team and chooses: narrow the wording, update the answer key for their own team only (another team's answers are locked to that team's owner), or save anyway, which notes it in the ops channel. To allow for the judge's natural variance, a team blocks only when two or more answers get worse, or on any new severe miss. A weekly scheduled eval run catches drift from model changes and posts to ops if a team regressed.
+
 **Honest limit:** the first answer key is our judgment of what the teams want. Real votes replace it within weeks, and the design makes that the default path.
 
 ## 6. Production readiness

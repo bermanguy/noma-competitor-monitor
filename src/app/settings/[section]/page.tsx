@@ -4,7 +4,7 @@ import { db } from "@/db/client";
 import { competitor, goldenItem, ownerSuggestion, source, team, topic } from "@/db/schema";
 import { GoldenItem } from "@/eval/golden";
 import { sourceHealth } from "@/pipeline/health";
-import { archiveCompetitorAction, addPerson, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removePerson, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, tryLensAction, updateTeam, updateTopic } from "../actions";
+import { archiveCompetitorAction, addPerson, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removePerson, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, tryLensAction, updateTeam, updateTopic, decideTeamEdit, setTeamAnswer } from "../actions";
 import { toReview } from "@/eval/owner-golden";
 import { currentViewer } from "@/lib/viewer";
 import { BUILDER, ROLE_HINT, ROLE_NAME, canEditTeam, canManagePeople, type Role } from "@/lib/view-as";
@@ -12,6 +12,10 @@ import { allViewers } from "@/lib/viewer";
 import { previewDigest } from "@/pipeline/preview";
 import { SlackMessage } from "@/components/SlackMessage";
 import { TryLens } from "@/components/TryLens";
+import { TeamEditCard } from "@/components/TeamEditCard";
+import { editToShow, verdictFor } from "@/eval/team-edit";
+import { examItems, goldenAnswers } from "@/eval/owner-golden";
+import type { EvalResult } from "@/eval/run";
 import { AddCompetitorWizard } from "@/components/AddCompetitorWizard";
 import { getOwnerTexts, OWNER_TEXTS, ownerTextHistoryFor, type OwnerTextKey } from "@/lib/owner-text";
 import { notFound } from "next/navigation";
@@ -62,6 +66,18 @@ export default async function Settings({ params, searchParams }: { params: Promi
   // The owner previews their own team; the builder picks one.
   const previewTeam = on("preview") ? teams.find((t) => t.key === (viewer.role === "builder" ? teamParam : viewer.team)) ?? teams[0] : undefined;
   const preview = previewTeam ? await previewDigest(d, previewTeam.key) : undefined;
+  // An owner's description edit, checked on the golden set before it goes live.
+  const editTeamKey = previewTeam?.key ?? (on("teams") ? (viewer.role === "owner" ? viewer.team : undefined) : undefined);
+  const edit = editTeamKey ? await editToShow(d, editTeamKey) : null;
+  const golden = edit ? await examItems(d) : [];
+  const answers = edit ? await goldenAnswers(d) : new Map();
+  const editVerdictNow = edit?.result ? verdictFor(edit.result as EvalResult, edit.baseline as EvalResult | null, answers) : null;
+  const editCard = edit && (
+    <TeamEditCard edit={edit} verdict={editVerdictNow} total={golden.length}
+      items={new Map(golden.map((g) => [g.id, { competitor: g.competitor, title: g.title ?? g.url, url: g.url }]))}
+      teamNames={Object.fromEntries(teams.map((t) => [t.key, t.name]))}
+      canAnswer={(k) => canEditTeam(viewer, k)} actions={{ decide: decideTeamEdit, answer: setTeamAnswer }} />
+  );
   const pending = await d.select().from(ownerSuggestion).where(eq(ownerSuggestion.status, "pending")).orderBy(desc(ownerSuggestion.id));
 
   return (
@@ -293,6 +309,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
       </div>
       )}
 
+      {on("teams") && editCard}
       {on("teams") && (
       <div className="grid2">
         {[...teams].sort((a, b) => Number(canEditTeam(viewer, b.key)) - Number(canEditTeam(viewer, a.key))).map((t) => canEditTeam(viewer, t.key) ? (
@@ -305,7 +322,8 @@ export default async function Settings({ params, searchParams }: { params: Promi
               </select>
             </div>
             <textarea name="lens" defaultValue={t.lens} style={{ marginTop: 8, minHeight: 150 }} />
-            <button style={{ marginTop: 8 }}>Save</button>
+            <div className="muted small" style={{ marginTop: 6 }}>A new description is checked on the test posts for every team before it goes live (about 2 minutes).</div>
+            <button style={{ marginTop: 8 }}>Save and check</button>
           </form>
         ) : (
           <div key={t.key} className="card" style={{ opacity: 0.75 }}>
@@ -366,6 +384,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
         </>
       )}
 
+      {on("preview") && editCard}
       {on("preview") && previewTeam && preview && (
         <>
           {viewer.role === "builder" && (
@@ -395,7 +414,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
             </div>
             <div>
               {canEditTeam(viewer, previewTeam.key)
-                ? <TryLens teamKey={previewTeam.key} teamName={previewTeam.name} lens={previewTeam.lens} tryAction={tryLensAction} saveAction={updateTeam} />
+                ? <><TryLens teamKey={previewTeam.key} teamName={previewTeam.name} lens={edit && edit.status !== "saved" && edit.status !== "saved_anyway" ? edit.lens : previewTeam.lens} tryAction={tryLensAction} saveAction={updateTeam} checking={edit?.status === "checking"} total={golden.length || undefined} /></>
                 : <div className="card muted">Only {previewTeam.name}&apos;s owner can fine-tune it.</div>}
               <div className="card muted" style={{ fontSize: 13 }}>
                 <strong style={{ color: "var(--fg)" }}>What else shapes this message</strong>

@@ -64,6 +64,13 @@
       "when": 1794570164009,
       "tag": "0008_competitor_archive_and_mcp_log",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794597029496,
+      "tag": "0009_team_edit",
+      "breakpoints": true
     }
   ]
 }
