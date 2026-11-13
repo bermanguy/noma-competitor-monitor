@@ -58,9 +58,12 @@ export async function previewDigest(db: DB, teamKey: string, now = new Date()): 
     const sameDay = await db.select().from(delivery)
       .where(and(eq(delivery.teamKey, teamKey), eq(delivery.kind, "digest"), eq(delivery.status, "sent"), gte(delivery.createdAt, day)));
     const ids = [...new Set(sameDay.flatMap((d) => d.judgmentIds))];
-    const lastItems = [...(await slackItems(db, ids)).values()];
-    const parts = digestMessages(t.name, lastItems, topicOrder).map((p) => p.payload);
-    return { mode: "last", parts, alerts, storyCount: lastItems.length, when: whenNext(now, last?.createdAt ?? null), lastSentAt: last.createdAt, quiet };
+    const lastItems = [...(await slackItems(db, ids)).values()].filter((i) => !i.isCanary);
+    // A digest that held only test pages has nothing to show.
+    if (lastItems.length) {
+      const parts = digestMessages(t.name, lastItems, topicOrder).map((p) => p.payload);
+      return { mode: "last", parts, alerts, storyCount: lastItems.length, when: whenNext(now, last.createdAt), lastSentAt: last.createdAt, quiet };
+    }
   }
   return { mode: "empty", parts: [], alerts, storyCount: 0, when: whenNext(now, null), lastSentAt: null, quiet };
 }
