@@ -3,10 +3,14 @@ import { db } from "@/db/client";
 import { competitor, goldenItem, ownerSuggestion, source, team, topic } from "@/db/schema";
 import { GoldenItem } from "@/eval/golden";
 import { sourceHealth } from "@/pipeline/health";
-import { addCompetitor, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, updateTeam, updateTopic } from "../actions";
+import { addCompetitor, addPerson, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removePerson, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, tryLensAction, updateTeam, updateTopic } from "../actions";
 import { toReview } from "@/eval/owner-golden";
 import { currentViewer } from "@/lib/viewer";
-import { canEditTeam } from "@/lib/view-as";
+import { BUILDER, ROLE_HINT, ROLE_NAME, canEditTeam, canManagePeople, type Role } from "@/lib/view-as";
+import { allViewers } from "@/lib/viewer";
+import { previewDigest } from "@/pipeline/preview";
+import { SlackMessage } from "@/components/SlackMessage";
+import { TryLens } from "@/components/TryLens";
 import { getOwnerTexts, OWNER_TEXTS, ownerTextHistoryFor, type OwnerTextKey } from "@/lib/owner-text";
 import { notFound } from "next/navigation";
 import { SETTINGS_SECTIONS, subLabel, type SettingsSection } from "@/lib/nav";
@@ -23,17 +27,19 @@ const LEAD: Record<SettingsSection, string> = {
   pricing: "Added to the judgment for pricing page changes.",
   teams: "The instruction the system follows when it decides what matters to each team. Write it the way you would brief a new analyst.",
   suggestions: "When Noma's own site changes, we suggest updates to what Noma sells and to the topics. Nothing changes until you approve it.",
+  people: "Who is on each team. Owners add and remove people in their own team, without waiting for the Builder.",
+  preview: "The next Slack message your team gets, exactly as it will look. Fine-tune it here, then save.",
 };
 const TEXT_KEY: Partial<Record<SettingsSection, OwnerTextKey>> = { company: "company", levels: "levels", pricing: "page.pricing" };
 
 const HEALTH_TEXT = { healthy: "Healthy", failing: "Needs attention", quiet: "Unusually quiet", new: "Starting" } as const;
 
-export default async function Settings({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ added?: string; error?: string }> }) {
+export default async function Settings({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ added?: string; error?: string; team?: string }> }) {
   const { section: raw } = await params;
   if (!(SETTINGS_SECTIONS as readonly string[]).includes(raw)) notFound();
   const section = raw as SettingsSection;
   const on = (s: SettingsSection) => section === s;
-  const { added, error } = await searchParams;
+  const { added, error, team: teamParam } = await searchParams;
   const d = db();
   const comps = await d.select().from(competitor).orderBy(competitor.name);
   const srcs = await d.select().from(source).where(eq(source.active, true));
@@ -48,6 +54,10 @@ export default async function Settings({ params, searchParams }: { params: Promi
     .filter((r) => r.votes.length > 0);
   // Exam items the owners already added; the same form updates the answer.
   const inExam = (await d.select().from(goldenItem).orderBy(desc(goldenItem.createdAt))).map((r) => ({ itemId: r.fromItemId, g: GoldenItem.parse(r.data) }));
+  const people = on("people") ? await allViewers(d) : [];
+  // The owner previews their own team; the builder picks one.
+  const previewTeam = on("preview") ? teams.find((t) => t.key === (viewer.role === "builder" ? teamParam : viewer.team)) ?? teams[0] : undefined;
+  const preview = previewTeam ? await previewDigest(d, previewTeam.key) : undefined;
   const pending = await d.select().from(ownerSuggestion).where(eq(ownerSuggestion.status, "pending")).orderBy(desc(ownerSuggestion.id));
 
   return (
@@ -290,6 +300,100 @@ export default async function Settings({ params, searchParams }: { params: Promi
           </div>
         ))}
       </div>
+      )}
+
+      {on("people") && (
+        <>
+          <div className="roles">
+            {(["builder", "owner", "member"] as Role[]).map((r) => (
+              <div key={r} className={`role-card${viewer.role === r ? " me" : ""}`}>
+                <strong>{ROLE_NAME[r]}</strong>{viewer.role === r && <span className="you">You</span>}
+                <p>{ROLE_HINT[r]}</p>
+              </div>
+            ))}
+          </div>
+          <div className="people-row"><span className="avatar sm" style={{ background: "#55e0ff" }}>{BUILDER.name[0]}</span><strong>{BUILDER.name}</strong><span className="muted">Builder · runs the system for every team</span></div>
+          {[...teams].sort((a, b) => Number(canManagePeople(viewer, b.key)) - Number(canManagePeople(viewer, a.key))).map((t) => {
+            const mine = canManagePeople(viewer, t.key);
+            const list = people.filter((p) => p.team === t.key).sort((a, b) => Number(a.role !== "owner") - Number(b.role !== "owner"));
+            return (
+              <div key={t.key} className={`card people${mine ? "" : " ro"}`}>
+                <div className="row"><strong>{t.name}</strong><span className="muted" style={{ marginLeft: "auto" }}>{mine ? (viewer.role === "builder" ? "You can manage every team" : "Your team") : "Managed by its owners"}</span></div>
+                {list.map((p) => (
+                  <div key={p.key} className="people-row">
+                    <span className={`role-pill r-${p.role}`}>{ROLE_NAME[p.role]}</span>
+                    <strong>{p.name}</strong><span className="muted">{p.title}</span>
+                    {p.key === viewer.key && <span className="you">You</span>}
+                    <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                      <a className="muted" href={`/view-as?as=${p.key}&next=/`}>View as</a>
+                      {mine && p.key !== viewer.key && (
+                        <form action={removePerson}><input type="hidden" name="key" value={p.key} /><button className="link-btn">Remove</button></form>
+                      )}
+                    </span>
+                  </div>
+                ))}
+                {list.length === 0 && <div className="muted" style={{ padding: "6px 0" }}>Nobody yet.</div>}
+                {mine && (
+                  <form action={addPerson} className="people-add">
+                    <input type="hidden" name="team" value={t.key} />
+                    <input name="name" placeholder="Name" required aria-label="Name" />
+                    <input name="title" placeholder="Job title (optional)" aria-label="Job title" />
+                    <select name="role" defaultValue="member" aria-label="Role" style={{ width: "auto" }}>
+                      <option value="member">Member: reads {t.name}&apos;s changes</option>
+                      <option value="owner">Owner: also sets up {t.name}</option>
+                    </select>
+                    <button>Add to {t.name}</button>
+                  </form>
+                )}
+              </div>
+            );
+          })}
+          <p className="muted">Members get {"their team's"} updates in Slack, and can open the Changes page to see them all in one place. There are no invites yet: everyone added here appears in the &quot;View as&quot; menu.</p>
+        </>
+      )}
+
+      {on("preview") && previewTeam && preview && (
+        <>
+          {viewer.role === "builder" && (
+            <div className="seg" style={{ marginBottom: 14 }}>
+              {teams.map((t) => <a key={t.key} href={`/settings/preview?team=${t.key}`} className={t.key === previewTeam.key ? "on" : ""}>{t.name}</a>)}
+            </div>
+          )}
+          <div className="preview-grid">
+            <div>
+              <div className="preview-h">
+                {preview.mode === "next" && <><strong>{previewTeam.name}&apos;s next digest</strong> · {preview.storyCount} {preview.storyCount === 1 ? "update" : "updates"}, goes out {preview.when}</>}
+                {preview.mode === "last" && <><strong>Nothing new is waiting.</strong> This is the last digest {previewTeam.name} got{preview.lastSentAt ? `, on ${preview.lastSentAt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}` : ""}.</>}
+                {preview.mode === "empty" && <><strong>Nothing to preview yet.</strong> The first digest appears here once a change worth knowing is found.</>}
+              </div>
+              {preview.quiet && <div className="notice">{previewTeam.name} is set to urgent only, so no daily digest is sent. <a href="/settings/teams">Change it</a></div>}
+              <div className="slack-frame">
+                <div className="slack-chan">Slack · {previewTeam.name}&apos;s channel</div>
+                {preview.parts.map((p, n) => <SlackMessage key={n} payload={p} time={preview.mode === "next" ? "next digest" : undefined} />)}
+                {preview.parts.length === 0 && <div className="muted" style={{ padding: 16 }}>No message yet.</div>}
+              </div>
+              {preview.alerts.length > 0 && (
+                <>
+                  <div className="preview-h" style={{ marginTop: 16 }}><strong>Also going out right away</strong> · {preview.alerts.length} urgent, at the next check</div>
+                  <div className="slack-frame">{preview.alerts.map((p, n) => <SlackMessage key={n} payload={p} />)}</div>
+                </>
+              )}
+            </div>
+            <div>
+              {canEditTeam(viewer, previewTeam.key)
+                ? <TryLens teamKey={previewTeam.key} teamName={previewTeam.name} lens={previewTeam.lens} tryAction={tryLensAction} saveAction={updateTeam} />
+                : <div className="card muted">Only {previewTeam.name}&apos;s owner can fine-tune it.</div>}
+              <div className="card muted" style={{ fontSize: 13 }}>
+                <strong style={{ color: "var(--fg)" }}>What else shapes this message</strong>
+                <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                  <li><a href="/settings/topics">Topics</a> decide the sections, in their order.</li>
+                  <li><a href="/settings/levels">What the levels mean</a> decides urgent, digest or FYI.</li>
+                  <li>Your team&apos;s 👎 votes land in <a href="/settings/review">To review</a>.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </>
   );

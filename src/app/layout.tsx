@@ -2,7 +2,7 @@ import "./globals.css";
 import type { ReactNode } from "react";
 import { eq, inArray, sql } from "drizzle-orm";
 import { AppShell } from "@/components/AppShell";
-import { currentViewer } from "@/lib/viewer";
+import { allViewers, currentViewer } from "@/lib/viewer";
 import { canEditTeam, type Viewer } from "@/lib/view-as";
 import type { BadgeKey } from "@/lib/nav";
 import { db } from "@/db/client";
@@ -28,11 +28,11 @@ async function badgeCounts(viewer: Viewer): Promise<Partial<Record<BadgeKey, num
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const viewer = await currentViewer();
-  const counts = await badgeCounts(viewer);
+  const [counts, viewers] = await Promise.all([viewer.role === "member" ? {} : badgeCounts(viewer), allViewers()]);
   return (
     <html lang="en">
       <body>
-        <AppShell viewer={viewer} counts={counts}>{children}</AppShell>
+        <AppShell viewer={viewer} viewers={viewers} counts={counts}>{children}</AppShell>
       </body>
     </html>
   );
