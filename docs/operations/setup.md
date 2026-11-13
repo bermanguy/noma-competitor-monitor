@@ -131,3 +131,18 @@ When the browser asks you to sign in, type anything as the username and the pass
 **Then I:** check every source, fix the ones that failed, add about 20 real posts to the exam, and run the exam.
 
 After that it runs on its own every 3 hours, and the digest arrives at 08:00 Israel time.
+
+---
+
+## Optional: the Claude connector (5 min)
+
+Lets people ask Claude about competitors (decision 0016).
+
+1. **Render** › Environment group `competitor-monitor` › add `MCP_SECRET` with a long random value (for example, the output of `openssl rand -hex 32`). Save. Both services redeploy.
+2. **The app** › Builder › Claude connector (`/ops/connector`). Copy the address for the person who will use it. Use an owner's address to demo adding a competitor.
+3. **Claude** › Settings › Connectors › **Add custom connector**. Give it a name (Competitor Monitor), paste the address and click Add. In a chat, turn it on from the tools menu.
+4. Ask, for example: "What's new with Zenity this week for Product?", "Who talks about MCP gateways?", "How do I remove a competitor?".
+
+The address acts as that person, so treat it like a password. To revoke one address, remove the person in Setup › People. To revoke all of them, change `MCP_SECRET`.
+
+For Claude Code: `claude mcp add --transport http competitor-monitor https://<your app>/api/mcp --header "Authorization: Bearer <token>"`, where the token is the last part of the address.
