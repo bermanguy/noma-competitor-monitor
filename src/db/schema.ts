@@ -232,3 +232,22 @@ export const goldenItem = pgTable("golden_item", {
   data: jsonb("data").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("golden_item_from_item_uq").on(t.fromItemId)]);
+
+export type PersonRole = "owner" | "member";
+
+/**
+ * A person in the app, other than the builder (who is fixed). An owner manages their team; a member
+ * reads their team's changes. Removing someone keeps the row, so the seed never brings them back.
+ */
+export const person = pgTable("person", {
+  id: serial("id").primaryKey(),
+  /** The "view as" key. */
+  key: text("key").notNull(),
+  name: text("name").notNull(),
+  title: text("title").notNull(),
+  role: text("role").$type<PersonRole>().notNull(),
+  teamKey: text("team_key").notNull(),
+  addedBy: text("added_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
+}, (t) => [uniqueIndex("person_key_uq").on(t.key)]);

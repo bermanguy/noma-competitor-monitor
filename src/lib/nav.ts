@@ -9,7 +9,7 @@ export interface SubItem { key: string; label: string; icon?: string; badge?: Ba
 export interface SubGroup { label?: string; items: SubItem[] }
 export interface RailItem { key: RailKey; label: string; href: string; builderOnly?: boolean; groups: SubGroup[] }
 
-export const SETTINGS_SECTIONS = ["review", "competitors", "topics", "company", "levels", "pricing", "teams", "suggestions"] as const;
+export const SETTINGS_SECTIONS = ["review", "competitors", "topics", "company", "levels", "pricing", "teams", "suggestions", "people", "preview"] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 export const OPS_SECTIONS = ["runs", "sources", "errors", "exam", "quality", "spend", "canary"] as const;
 export type OpsSection = (typeof OPS_SECTIONS)[number];
@@ -20,6 +20,7 @@ export const RAIL: RailItem[] = [
     key: "setup", label: "Setup", href: "/settings/competitors",
     groups: [
       { items: [{ key: "review", label: "To review", icon: "review", badge: "review" }] },
+      { label: "Your team", items: [{ key: "preview", label: "Preview next digest", icon: "eye" }, { key: "people", label: "People", icon: "people" }] },
       { label: "What we watch", items: [{ key: "competitors", label: "Competitors", icon: "building" }, { key: "topics", label: "Topics", icon: "hash" }] },
       {
         label: "Prompts",

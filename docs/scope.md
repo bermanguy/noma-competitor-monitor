@@ -35,3 +35,4 @@ Social media, press wires, review sites, job postings. Cross-source deduplicatio
 - 2026-11-12: until submission, trust before experience: effort goes to monitoring, judgment and noise; UI polish is deferred (decision 0010).
 - 2026-11-12: "not useful" votes are listed for the owner in Settings and can be added to the exam with the right level per team (decision 0011). No new channel, schedule or user.
 - 2026-11-12: "View as" bar: the site is always viewed as the Owner or the Builder. The Owner sees the feed and settings; the Builder also sees the builder area (/ops, formerly "Operator"). Business teams use Slack only. One sign-in for all pages.
+- 2026-11-13: Three roles: Builder, Owner (per team) and Member (per team, sees only Changes for their team). Owners add and remove people in their own team and preview their next digest. See decision 0015.

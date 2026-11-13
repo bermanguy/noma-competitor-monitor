@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { RAIL, locate, subHref, type BadgeKey, type RailKey } from "@/lib/nav";
-import { VIEWERS, type Viewer } from "@/lib/view-as";
+import { ROLE_NAME, type Role, type Viewer } from "@/lib/view-as";
 
 const PATHS: Record<string, string> = {
   changes: "M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5",
@@ -13,18 +13,24 @@ const PATHS: Record<string, string> = {
   hash: "M4 9h16M4 15h16M10 3 8 21M16 3l-2 18",
   prompt: "M4 5h16v11H8l-4 4z",
   spark: "M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6",
+  eye: "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0",
+  people: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1M16 3.1a4 4 0 0 1 0 7.8M22 21v-1a6 6 0 0 0-4-5.7",
   dot: "M12 12m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0",
 };
 const Icon = ({ name }: { name: string }) => (
   <svg viewBox="0 0 24 24" aria-hidden><path d={PATHS[name] ?? PATHS.dot} /></svg>
 );
 
+/** One color per team, so a team's owner and members read as one group. */
 const AVATAR: Record<string, string> = { builder: "#55e0ff", marketing: "#fbbf77", product: "#a7f3a0", rnd: "#f5a8d4" };
+const TEAM_NAME: Record<string, string> = { marketing: "Marketing", product: "Product", rnd: "R&D" };
 const Avatar = ({ v, size = 38 }: { v: Viewer; size?: number }) => (
-  <span className="avatar" style={{ background: AVATAR[v.key] ?? "#ddd", width: size, height: size, fontSize: size * 0.4 }}>{v.name[0]}</span>
+  <span className="avatar" style={{ background: AVATAR[v.team ?? v.key] ?? "#ddd", width: size, height: size, fontSize: size * 0.4 }}>{v.name[0]}</span>
 );
+const roleLine = (v: Viewer) => (v.team ? `${ROLE_NAME[v.role]} · ${TEAM_NAME[v.team] ?? v.team}` : ROLE_NAME[v.role]);
+const GROUPS: { role: Role; label: string }[] = [{ role: "builder", label: "Builder" }, { role: "owner", label: "Owners" }, { role: "member", label: "Members" }];
 
-export function AppShell({ viewer, counts, children }: { viewer: Viewer; counts: Partial<Record<BadgeKey, number>>; children: ReactNode }) {
+export function AppShell({ viewer, viewers, counts, children }: { viewer: Viewer; viewers: Viewer[]; counts: Partial<Record<BadgeKey, number>>; children: ReactNode }) {
   const path = usePathname();
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -41,7 +47,8 @@ export function AppShell({ viewer, counts, children }: { viewer: Viewer; counts:
   if (path.startsWith("/feedback") || path.startsWith("/canary")) return <main className="plain">{children}</main>;
 
   const { rail, sub } = locate(path);
-  const items = RAIL.filter((r) => !r.builderOnly || viewer.role === "builder");
+  // A member sees only Changes; an owner sees everything but Builder.
+  const items = RAIL.filter((r) => viewer.role === "builder" || (viewer.role === "owner" ? !r.builderOnly : r.key === "changes"));
   const railBadge = (k: RailKey) => RAIL.find((r) => r.key === k)!.groups.flatMap((g) => g.items).reduce((n, i) => n + (i.badge ? counts[i.badge] ?? 0 : 0), 0);
   const hasPanel = !!rail && rail.groups.length > 0;
 
@@ -66,16 +73,27 @@ export function AppShell({ viewer, counts, children }: { viewer: Viewer; counts:
           </button>
           {menu && (
             <div className="user-menu" role="menu">
-              <div className="user-me"><Avatar v={viewer} /><div><strong>{viewer.name}</strong><div className="muted">{viewer.title}</div></div></div>
-              <div className="user-label">View as</div>
-              {VIEWERS.map((v) => (
-                <a key={v.key} role="menuitemradio" aria-checked={v.key === viewer.key} className={`user-opt${v.key === viewer.key ? " on" : ""}`}
-                  href={`/view-as?as=${v.key}&next=${encodeURIComponent(path)}`}>
-                  <Avatar v={v} size={28} /><span><strong>{v.name}</strong> <span className="muted">{v.title}</span></span>
-                  {v.key === viewer.key && <span className="check">✓</span>}
-                </a>
-              ))}
-              <div className="user-foot">Business teams get everything in Slack. Only the Builder sees Builder.</div>
+              <div className="user-me"><Avatar v={viewer} /><div><strong>{viewer.name}</strong><div className="muted">{viewer.title}</div><div className="role-line">{roleLine(viewer)}</div></div></div>
+              <div className="user-scroll">
+                {GROUPS.map((g) => {
+                  const list = viewers.filter((v) => v.role === g.role);
+                  if (!list.length) return null;
+                  return (
+                    <div key={g.role}>
+                      <div className="user-label">View as {g.label.toLowerCase()}</div>
+                      {list.map((v) => (
+                        <a key={v.key} role="menuitemradio" aria-checked={v.key === viewer.key} className={`user-opt${v.key === viewer.key ? " on" : ""}`}
+                          href={`/view-as?as=${v.key}&next=${encodeURIComponent(path)}`}>
+                          <Avatar v={v} size={28} /><span><strong>{v.name}</strong> <span className="muted">{v.title}</span></span>
+                          {v.team && <span className="team-chip">{TEAM_NAME[v.team] ?? v.team}</span>}
+                          {v.key === viewer.key && <span className="check">✓</span>}
+                        </a>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="user-foot">Builder sees everything. Owners set up their own team. Members read their team&apos;s changes, and get them in Slack.</div>
             </div>
           )}
         </div>
@@ -108,7 +126,7 @@ export function AppShell({ viewer, counts, children }: { viewer: Viewer; counts:
             {rail && (sub ? <><a href={rail.href}>{rail.label}</a><span className="sep">/</span><strong>{sub.label}</strong></> : <strong>{rail.label}</strong>)}
           </nav>
           <button type="button" className="viewing" onClick={() => setMenu(true)} title="Change who you are viewing as">
-            <Avatar v={viewer} size={22} />Viewing as {viewer.name} · {viewer.title}
+            <Avatar v={viewer} size={22} />Viewing as {viewer.name} · {roleLine(viewer)}
           </button>
         </div>
         <main>{children}</main>

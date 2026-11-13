@@ -1,18 +1,19 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db/client";
-import { competitor, source, team, topic, type NoiseLevel, type PageType } from "@/db/schema";
+import { competitor, person, source, team, topic, type NoiseLevel, type PageType, type PersonRole } from "@/db/schema";
 import { discoverSources } from "@/pipeline/discover";
 import { OWNER_TEXTS, restoreOwnerText, setOwnerText, type OwnerTextKey } from "@/lib/owner-text";
 import { applySuggestion, dismissSuggestion } from "@/pipeline/own-site";
 import { addToExam } from "@/eval/owner-golden";
 import type { Level } from "@/db/schema";
 import { currentViewer } from "@/lib/viewer";
-import { canEditTeam } from "@/lib/view-as";
+import { canEditTeam, canManagePeople } from "@/lib/view-as";
 import { ownerTextPath } from "@/lib/nav";
+import { tryLens, type LensTrial } from "@/pipeline/preview";
 
 export async function addCompetitor(form: FormData) {
   const name = String(form.get("name") ?? "").trim();
@@ -95,11 +96,15 @@ export async function removeTopic(form: FormData) {
 export async function updateTeam(form: FormData) {
   const lens = String(form.get("lens") ?? "").trim();
   const noise = (form.get("noise") === "quiet" ? "quiet" : "normal") as NoiseLevel;
-  if (!canEditTeam(await currentViewer(), String(form.get("key")))) redirect("/settings/teams?error=" + encodeURIComponent("Only that team's owner (or the builder) can change its description"));
-  if (lens.length < 40) redirect("/settings/teams?error=" + encodeURIComponent("Describe what the team cares about in at least a sentence or two"));
-  await db().update(team).set({ lens, noise }).where(eq(team.key, String(form.get("key"))));
+  // The preview page saves the description only; the team page also sets how often the team hears from us.
+  const back = String(form.get("back") ?? "").startsWith("/settings/") ? String(form.get("back")) : "/settings/teams";
+  const sep = back.includes("?") ? "&" : "?";
+  const key = String(form.get("key"));
+  if (!canEditTeam(await currentViewer(), key)) redirect(back + sep + "error=" + encodeURIComponent("Only that team's owner (or the builder) can change its description"));
+  if (lens.length < 40) redirect(back + sep + "error=" + encodeURIComponent("Describe what the team cares about in at least a sentence or two"));
+  await db().update(team).set(form.has("noise") ? { lens, noise } : { lens }).where(eq(team.key, key));
   revalidatePath("/settings", "layout");
-  redirect("/settings/teams?added=" + encodeURIComponent("Saved. Changes apply from the next check."));
+  redirect(back + sep + "added=" + encodeURIComponent("Saved. Changes apply from the next check."));
 }
 
 /** The owner approves a suggestion from Noma's site, after editing the profile text and ticking the topic changes they want. */
@@ -138,4 +143,51 @@ export async function addToExamAction(form: FormData) {
   redirect("/settings/review?" + (g
     ? "added=" + encodeURIComponent(`Saved to the exam. From the next exam on, the judge is checked against your answer for "${g.title ?? g.url}".`)
     : "error=" + encodeURIComponent("That item could not be added")) + "#review");
+}
+
+/** An owner adds an owner or a member to their own team; the builder adds to any team. */
+export async function addPerson(form: FormData) {
+  const viewer = await currentViewer();
+  const name = String(form.get("name") ?? "").trim().replace(/\s+/g, " ");
+  const title = String(form.get("title") ?? "").trim() || "Team member";
+  const role = (form.get("role") === "owner" ? "owner" : "member") as PersonRole;
+  const teamKey = String(form.get("team") ?? "");
+  const back = (q: string) => redirect("/settings/people?" + q);
+  if (!canManagePeople(viewer, teamKey)) back("error=" + encodeURIComponent("You can add people only to your own team"));
+  if (name.length < 2 || name.length > 60) back("error=" + encodeURIComponent("Enter the person's name"));
+  const [t] = await db().select().from(team).where(eq(team.key, teamKey));
+  if (!t) back("error=" + encodeURIComponent("Pick a team"));
+  const slug = name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "person";
+  const taken = new Set((await db().select({ key: person.key }).from(person)).map((p) => p.key));
+  let key = slug;
+  for (let n = 2; taken.has(key) || key === "builder"; n++) key = `${slug}-${n}`;
+  await db().insert(person).values({ key, name, title, role, teamKey, addedBy: viewer.key });
+  revalidatePath("/", "layout");
+  back("added=" + encodeURIComponent(`${name} is now ${role === "owner" ? "an owner" : "a member"} of ${t!.name}. You can view the app as ${name} from your menu.`));
+}
+
+/** Removes someone from a team. Nobody removes themselves, so a team always keeps the owner who is doing this. */
+export async function removePerson(form: FormData) {
+  const viewer = await currentViewer();
+  const [p] = await db().select().from(person).where(and(eq(person.key, String(form.get("key") ?? "")), isNull(person.removedAt)));
+  if (!p || !canManagePeople(viewer, p.teamKey)) redirect("/settings/people?error=" + encodeURIComponent("You can remove people only from your own team"));
+  if (p!.key === viewer.key) redirect("/settings/people?error=" + encodeURIComponent("You can't remove yourself. Ask another owner of your team, or the Builder."));
+  await db().update(person).set({ removedAt: new Date() }).where(eq(person.id, p!.id));
+  revalidatePath("/", "layout");
+  redirect("/settings/people?added=" + encodeURIComponent(`${p!.name} was removed.`));
+}
+
+/** Tries a draft team description on the team's latest changes. Saves nothing. */
+export async function tryLensAction(_prev: { trials?: LensTrial[]; lens?: string; error?: string }, form: FormData) {
+  const key = String(form.get("key"));
+  const lens = String(form.get("lens") ?? "").trim();
+  if (!canEditTeam(await currentViewer(), key)) return { lens, error: "Only that team's owner (or the builder) can try changes to it" };
+  if (lens.length < 40) return { lens, error: "Describe what the team cares about in at least a sentence or two" };
+  try {
+    const trials = await tryLens(db(), key, lens);
+    return trials.length ? { lens, trials } : { lens, error: "There are no changes from the last 30 days to try it on yet" };
+  } catch (e) {
+    console.error("tryLens failed", e);
+    return { lens, error: "Could not run the trial. Try again in a minute." };
+  }
 }

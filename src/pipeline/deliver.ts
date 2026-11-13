@@ -38,7 +38,7 @@ export async function sendOnce(
   }
 }
 
-async function slackItems(db: DB, ids: number[]): Promise<Map<number, SlackItem>> {
+export async function slackItems(db: DB, ids: number[]): Promise<Map<number, SlackItem>> {
   if (ids.length === 0) return new Map();
   const rows = await db
     .select({ j: judgment, i: item, c: competitor })
@@ -63,8 +63,8 @@ async function slackItems(db: DB, ids: number[]): Promise<Map<number, SlackItem>
   );
 }
 
-export async function deliver(db: DB, now = new Date()) {
-  const { date, hour } = localNow(now);
+/** What the next run would send: alerts now, and each team's digest. Shared by delivery and the owner's preview. */
+export async function planDelivery(db: DB, now = new Date()) {
   const since = new Date(now.getTime() - 7 * 864e5);
   const teams = await db.select().from(team);
   const topicOrder = (await db.select({ name: topic.name }).from(topic).where(eq(topic.active, true)).orderBy(topic.id)).map((t) => t.name);
@@ -86,6 +86,12 @@ export async function deliver(db: DB, now = new Date()) {
 
   const p = plan(candidates, teams, alreadySent, alertsSentToday);
   const items = await slackItems(db, [...[...p.alerts.values()].flat(), ...[...p.digest.values()].flat()]);
+  return { teams, topicOrder, plan: p, items };
+}
+
+export async function deliver(db: DB, now = new Date()) {
+  const { date, hour } = localNow(now);
+  const { teams, topicOrder, plan: p, items } = await planDelivery(db, now);
   const stats = { alerts: 0, digests: 0, failed: 0 };
 
   for (const t of teams) {

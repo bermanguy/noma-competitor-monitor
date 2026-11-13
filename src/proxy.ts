@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { VIEW_AS_COOKIE, isBuilderPath, viewerFor } from "@/lib/view-as";
+import { BUILDER, VIEW_AS_COOKIE, isBuilderPath } from "@/lib/view-as";
 
 /**
  * Two surfaces, two passwords. The owner password opens the owner surface (feed, settings); the
@@ -23,7 +23,7 @@ export function proxy(req: NextRequest) {
 
 /** The builder area is shown only when viewing as the builder; opening it switches the view to the builder. */
 function viewAs(req: NextRequest) {
-  if (isBuilderPath(req.nextUrl.pathname) && viewerFor(req.cookies.get(VIEW_AS_COOKIE)?.value).role !== "builder") {
+  if (isBuilderPath(req.nextUrl.pathname) && (req.cookies.get(VIEW_AS_COOKIE)?.value ?? BUILDER.key) !== BUILDER.key) {
     // Built from the public host: behind Render's proxy, req.url is the internal address (localhost:10000).
     const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? req.nextUrl.host;
     const proto = req.headers.get("x-forwarded-proto") ?? req.nextUrl.protocol.replace(":", "");

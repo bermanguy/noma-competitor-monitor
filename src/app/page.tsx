@@ -1,7 +1,8 @@
 import { desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { competitor, delivery, item, judgment, team, type Level } from "@/db/schema";
-import { currentViewer } from "@/lib/viewer";
+import { allViewers, currentViewer } from "@/lib/viewer";
+import { feedbackUrl } from "@/pipeline/slack";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { FilterMenu } from "@/components/FilterMenu";
 
@@ -39,8 +40,10 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
   const viewer = await currentViewer();
   const d = db();
   const teams = await d.select().from(team).orderBy(team.id);
-  // An owner starts on their own team's view; "all" shows every team side by side.
-  const teamKey = sp.team === "all" ? undefined : teams.some((t) => t.key === sp.team) ? sp.team : viewer.team ?? undefined;
+  // A member sees only their own team. An owner starts on their own team's view; "all" shows every team side by side.
+  const member = viewer.role === "member";
+  const teamKey = member ? viewer.team ?? undefined : sp.team === "all" ? undefined : teams.some((t) => t.key === sp.team) ? sp.team : viewer.team ?? undefined;
+  const owners = member ? (await allViewers(d)).filter((v) => v.role === "owner" && v.team === teamKey) : [];
   const teamName = teams.find((t) => t.key === teamKey)?.name;
   const dateKey = sp.date && DATES[sp.date] ? sp.date : "30";
   const now = new Date();
@@ -103,13 +106,23 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
   return (
     <div className="changes">
       <div className="ch-head">
-        <h1>Competitor changes</h1>
-        <div className="seg">
+        <h1>Competitor changes{member && teamName ? ` for ${teamName}` : ""}</h1>
+        {!member && <div className="seg">
           <a href={link({ team: "all" })} className={!teamKey ? "on" : ""}>All teams</a>
           {teams.map((t) => <a key={t.key} href={link({ team: t.key })} className={teamKey === t.key ? "on" : ""}>{t.name}</a>)}
-        </div>
+        </div>}
       </div>
-      <p className="lead">Every competitor change we found, and how much it matters to {teamName ?? "each team"}.</p>
+      {member ? (
+        <div className="slack-note">
+          <svg viewBox="0 0 24 24" aria-hidden><path d="M5 15a2 2 0 1 1-2-2h2zm1 0a2 2 0 1 1 4 0v5a2 2 0 1 1-4 0zM9 5a2 2 0 1 1 2-2v2zm0 1a2 2 0 1 1 0 4H4a2 2 0 1 1 0-4zm10 3a2 2 0 1 1 2 2h-2zm-1 0a2 2 0 1 1-4 0V4a2 2 0 1 1 4 0zm-3 10a2 2 0 1 1-2 2v-2zm0-1a2 2 0 1 1 0-4h5a2 2 0 1 1 0 4z" /></svg>
+          <div>
+            <strong>Your updates come to Slack.</strong> Urgent changes arrive right away and the rest in one daily digest, in your team&apos;s channel. This page keeps everything in one place, written for {teamName}.
+            {owners.length > 0 && <span className="muted"> {owners.map((o) => o.name).join(" and ")} {owners.length === 1 ? "decides" : "decide"} what {teamName} gets.</span>}
+          </div>
+        </div>
+      ) : (
+        <p className="lead">Every competitor change we found, and how much it matters to {teamName ?? "each team"}.</p>
+      )}
 
       <nav className="ltabs" aria-label="Level">
         <a href={link({ level: undefined })} className={!level ? "on" : ""}>All <span className="n">{count()}</span></a>
@@ -131,7 +144,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
             { param: "topic", title: "Topic", options: [...topicCounts].sort((a, b) => b[1] - a[1]).map(([t, n]) => ({ value: t, label: t, count: n })) },
             { param: "all", title: "Also show", options: [{ value: "1", label: "Changes not judged (cosmetic, held, failed)" }] },
           ]} />
-        {hasFilters && <a className="fclear" href={teamKey ? `/?team=${teamKey}` : "/?team=all"}>Clear</a>}
+        {hasFilters && <a className="fclear" href={member ? "/" : teamKey ? `/?team=${teamKey}` : "/?team=all"}>Clear</a>}
       </div>
 
       <div className={`ch-table ${cols}`}>
@@ -171,7 +184,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
                   {x.summary && <p className="ch-sum">{x.summary}</p>}
                   {x.all.length > 0 && (
                     <div className="reads">
-                      {teams.map((t) => {
+                      {teams.filter((t) => !member || t.key === teamKey).map((t) => {
                         const j = x.all.find((y) => y.teamKey === t.key);
                         if (!j) return null;
                         const s = sent.get(j.id);
@@ -188,6 +201,9 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
                             {j.level !== "none" && j.evidence.slice(0, 2).map((qt, k) => <blockquote key={k}>“{qt}”</blockquote>)}
                             {j.topics.length > 0 && <div className="read-topics">{j.topics.join(" · ")}</div>}
                             <div className="read-slack">{slack}</div>
+                            {member && (j.level === "alert" || j.level === "digest") && (
+                              <div className="read-vote">Was this useful? <a href={feedbackUrl(j.id, true)}>👍 Useful</a><a href={feedbackUrl(j.id, false)}>👎 Not useful</a></div>
+                            )}
                           </div>
                         );
                       })}
