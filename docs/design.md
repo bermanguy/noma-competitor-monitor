@@ -91,17 +91,20 @@ When a score drops, we find the cause before changing anything: a wrong answer k
 
 Runs unattended every 3 hours. Retries with backoff; one source failing never stops the run; idempotent deliveries; per-run and per-month cost caps checked before each call; silent-breakage checks (quiet longer than usual, content shrank); an external heartbeat for missed runs; three Slack audiences so nobody filters someone else's noise (teams get news, the owner gets decisions, ops gets breakages). Fetched text is treated as untrusted data, never instructions; outbound fetches refuse private network addresses; secrets live only in Render environment variables. A canary page we control proves the whole path end to end on demand.
 
-## 7. What was left out, and what's next
+## 7. Rollout, what was left out, and what's next
+
+**This is an MVP, and the rollout is part of the design** ([0015](decisions/0015-mvp-rollout-with-owners-first.md)). It goes first to the area owners and a few business users per team. For the first weeks the goal is validation, not reach: are the updates accurate, is each team getting the right level, and what's missing? Every vote feeds the exam (section 5), so we tune accuracy with them before widening the audience. Only then do we add sources.
 
 Left out on purpose (frozen in [scope.md](scope.md)): social media, press wires, review sites, job posts, SSO and roles beyond a shared password, email and Teams, automatic prompt tuning, AWS Marketplace prices (0013).
 
 Next, in order:
 
-1. **Competitor briefing podcast.** The owner picks a period, topics and competitors and gets a two-voice debate summary, posted as a link in Slack and a podcast feed. It's built from items already judged and quoted, so it inherits the evidence.
-2. **Each area head labels their own team's answers** in the exam, instead of the product owner standing in.
-3. **Sonnet as the judge**, if the exam shows per-team precision holds, at about half the cost.
-4. **Changelog and integrations page types**, following the pricing reader's shape: read, verify, compare.
-5. **Queue and workers**, when competitors pass about 50.
+1. **Validate with the owners and a few business users** (above), then widen to the full teams.
+2. **More sources, R&D first:** release notes, changelogs, docs and technical channels such as GitHub and research blogs, which carry the depth R&D wants and blog posts often lack. New page types follow the pricing reader's shape: read, verify, compare.
+3. **Competitor briefing podcast.** The owner picks a period, topics and competitors and gets a two-voice debate summary, posted as a link in Slack and a podcast feed. It's built from items already judged and quoted, so it inherits the evidence.
+4. **Each area head labels their own team's answers** in the exam, instead of the product owner standing in.
+5. **Sonnet as the judge**, if the exam shows per-team precision holds, at about half the cost.
+6. **Queue and workers**, when competitors pass about 50.
 
 ## 8. Risks
 

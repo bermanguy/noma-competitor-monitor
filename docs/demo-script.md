@@ -10,7 +10,7 @@ The video and every day's plan follow this script. A step is done only when it r
 | 4 | 2:15–3:15 | The owner adds HiddenLayer by typing its domain, sees the sources and first items found, adds a topic, sets a team's noise level | Self-service without engineering | Proven live |
 | 5 | 3:15–4:00 | A 👎 with a reason pings the owner; in Settings the owner picks the right level and adds it to the exam; the Builder area runs the exam and shows per-team precision and how each digest would look | Output quality and how it improves | Proven live |
 | 6 | 4:00–4:40 | The Builder area shows source health, runs, failures and cost per run; the ops channel shows a failure alert | Runs unattended, 3 a.m. failures | Proven live |
-| 7 | 4:40–5:00 | What was left out and what comes next (podcast briefing first) | Judgment about scope | Script only |
+| 7 | 4:40–5:00 | This is an MVP: first the owners and a few business users validate accuracy with their votes, then we widen and add sources (release notes, technical channels for R&D), then the podcast briefing | Judgment about scope | Script only |
 
 ## Golden examples the demo depends on
 
