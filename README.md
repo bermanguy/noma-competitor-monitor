@@ -31,7 +31,7 @@ npm run eval                         # evals on the golden set: per-team precisi
 
 - [Design doc](docs/design.md): architecture, choices, scale, quality, risks
 - [Decisions](docs/decisions/): one short record per choice (0001 to 0015)
-- [Demo script](docs/demo-script.md) and [scope](docs/scope.md)
+- [Scope](docs/scope.md)
 
 ## AI assistants used
 
