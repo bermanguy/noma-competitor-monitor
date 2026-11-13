@@ -2,6 +2,7 @@ import { desc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { mcpCall } from "@/db/schema";
 import { config } from "@/config";
+import { localDateTime } from "@/lib/time";
 import { ROLE_NAME } from "@/lib/view-as";
 import { allViewers } from "@/lib/viewer";
 import { tokenFor } from "@/mcp/auth";
@@ -43,11 +44,11 @@ export default async function Connector() {
       )}
       <h2 style={{ marginTop: 24 }}>Every call</h2>
       <table>
-        <thead><tr><th>When (UTC)</th><th>Who</th><th>Tool</th><th>Effect</th><th>Arguments</th><th>Result</th></tr></thead>
+        <thead><tr><th>When</th><th>Who</th><th>Tool</th><th>Effect</th><th>Arguments</th><th>Result</th></tr></thead>
         <tbody>
           {calls.map((c) => (
             <tr key={c.id}>
-              <td className="muted">{c.createdAt.toISOString().slice(0, 16).replace("T", " ")}</td>
+              <td className="muted">{localDateTime(c.createdAt)}</td>
               <td>{c.personKey} <span className="muted">({c.role})</span></td>
               <td>{c.tool}</td>
               <td>{c.effect === "write" ? <strong>write</strong> : c.effect}</td>

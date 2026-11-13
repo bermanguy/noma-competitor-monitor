@@ -50,13 +50,13 @@ Topics are themes such as "MCP and agent skills security" or "AI red teaming", a
 
 ## Votes and how it gets better
 
-Every Slack alert has 👍 and 👎, and every digest has a rating link. A 👎 with a reason pings the team's owner. Under **Setup › To review**, the owner sees each "not useful" vote, picks the level the team should have got, and adds it to the **exam** with one click.
+Every Slack alert has 👍 and 👎, and every digest has a rating link. A 👎 with a reason pings the team's owner. Under **Setup › To review**, the owner sees each "not useful" vote, picks the level the team should have got, and adds it to the **golden set** with one click.
 
-The exam is a hand-labelled set of real items. Before any prompt or model change ships, the builder runs it and gets precision and recall per team. So the system's mistakes become test questions, and quality can only ratchet up.
+The golden set is a hand-labelled set of real items. Before any prompt or model change ships, the builder runs the **evals** on it and gets precision and recall per team. So the system's mistakes become test questions, and quality can only ratchet up.
 
 ## People and roles
 
-- **Builder**: sees everything, including the Builder area (runs, sources, exam, cost, connector).
+- **Builder**: sees everything, including the Builder area (runs, sources, evals, cost, connector).
 - **Owner**: one per team. Sets up the team's description, noise level and people, previews the digest, reviews votes, and manages competitors and topics.
 - **Member**: reads their team's changes, on the Changes page and in Slack.
 
