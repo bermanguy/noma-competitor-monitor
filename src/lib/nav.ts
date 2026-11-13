@@ -11,7 +11,7 @@ export interface RailItem { key: RailKey; label: string; href: string; builderOn
 
 export const SETTINGS_SECTIONS = ["review", "competitors", "topics", "company", "levels", "pricing", "teams", "suggestions", "people", "preview"] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
-export const OPS_SECTIONS = ["runs", "sources", "errors", "exam", "quality", "spend", "canary"] as const;
+export const OPS_SECTIONS = ["overview", "runs", "sources", "errors", "exam", "quality", "spend", "canary"] as const;
 export type OpsSection = (typeof OPS_SECTIONS)[number];
 
 export const RAIL: RailItem[] = [
@@ -35,9 +35,9 @@ export const RAIL: RailItem[] = [
     ],
   },
   {
-    key: "builder", label: "Builder", href: "/ops/runs", builderOnly: true,
+    key: "builder", label: "Builder", href: "/ops/overview", builderOnly: true,
     groups: [
-      { items: [{ key: "runs", label: "Runs" }, { key: "sources", label: "Sources" }, { key: "errors", label: "Not sent (errors)", badge: "errors" }] },
+      { items: [{ key: "overview", label: "Overview" }, { key: "runs", label: "Runs" }, { key: "sources", label: "Sources" }, { key: "errors", label: "Not sent (errors)", badge: "errors" }] },
       { label: "Quality", items: [{ key: "exam", label: "Exam (golden set)" }, { key: "quality", label: "Output quality" }, { key: "spend", label: "Model spend" }] },
       { label: "Testing", items: [{ key: "canary", label: "Canary pages" }] },
     ],
