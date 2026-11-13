@@ -3,7 +3,7 @@ import { db } from "@/db/client";
 import { competitor, goldenItem, ownerSuggestion, source, team, topic } from "@/db/schema";
 import { GoldenItem } from "@/eval/golden";
 import { sourceHealth } from "@/pipeline/health";
-import { addCompetitor, archiveCompetitorAction, addPerson, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removePerson, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, tryLensAction, updateTeam, updateTopic } from "../actions";
+import { archiveCompetitorAction, addPerson, addToExamAction, addTopic, addWatchedPage, approveSuggestion, dismissSuggestionAction, removePerson, removeTopic, restoreOwnerTextAction, saveOwnerText, setCompetitorActive, tryLensAction, updateTeam, updateTopic } from "../actions";
 import { toReview } from "@/eval/owner-golden";
 import { currentViewer } from "@/lib/viewer";
 import { BUILDER, ROLE_HINT, ROLE_NAME, canEditTeam, canManagePeople, type Role } from "@/lib/view-as";
@@ -11,6 +11,7 @@ import { allViewers } from "@/lib/viewer";
 import { previewDigest } from "@/pipeline/preview";
 import { SlackMessage } from "@/components/SlackMessage";
 import { TryLens } from "@/components/TryLens";
+import { AddCompetitorWizard } from "@/components/AddCompetitorWizard";
 import { getOwnerTexts, OWNER_TEXTS, ownerTextHistoryFor, type OwnerTextKey } from "@/lib/owner-text";
 import { notFound } from "next/navigation";
 import { SETTINGS_SECTIONS, subLabel, type SettingsSection } from "@/lib/nav";
@@ -129,6 +130,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
       )}
 
       {on("competitors") && (<>
+      <AddCompetitorWizard />
       <table>
         <thead><tr><th>Competitor</th><th>What we watch</th><th>Status</th><th></th></tr></thead>
         <tbody>
@@ -182,14 +184,6 @@ export default async function Settings({ params, searchParams }: { params: Promi
           ))}
         </div>
       )}
-      <div className="card" style={{ marginTop: 12 }}>
-        <form action={addCompetitor} className="row">
-          <div style={{ flex: 1 }}><input type="text" name="name" placeholder="Company name, e.g. HiddenLayer" required /></div>
-          <div style={{ flex: 1 }}><input type="text" name="domain" placeholder="Website, e.g. hiddenlayer.com" required /></div>
-          <button>Add competitor</button>
-        </form>
-        <div className="muted" style={{ marginTop: 6 }}>We find their blog or news feed and homepage automatically. It takes a few seconds.</div>
-      </div>
       <div className="card" style={{ marginTop: 12 }}>
         <form action={addWatchedPage} className="row">
           <select name="competitorId" style={{ width: "auto" }}>{comps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
