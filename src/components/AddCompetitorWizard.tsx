@@ -38,7 +38,7 @@ async function call<T>(p: Promise<T>, ms: number): Promise<{ ok: true; value: T 
 }
 
 /** Add a competitor in three steps: website, pages to watch, first check. */
-export function AddCompetitorWizard() {
+export function AddCompetitorWizard({ trigger = "card" }: { trigger?: "card" | "button" } = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>(1);
@@ -147,13 +147,17 @@ export function AddCompetitorWizard() {
 
   return (
     <>
-      <div className="card wz-cta">
-        <div>
-          <strong>Add a competitor</strong>
-          <div className="muted">Give us their website. We find their blog, news, product and pricing pages, and you pick what to watch.</div>
+      {trigger === "button" ? (
+        <button className="wz-open" onClick={() => setOpen(true)}><span aria-hidden>+</span> Add competitor</button>
+      ) : (
+        <div className="card wz-cta">
+          <div>
+            <strong>Add a competitor</strong>
+            <div className="muted">Give us their website. We find their blog, news, product and pricing pages, and you pick what to watch.</div>
+          </div>
+          <button onClick={() => setOpen(true)}>Add competitor</button>
         </div>
-        <button onClick={() => setOpen(true)}>Add competitor</button>
-      </div>
+      )}
 
       {open && (
         <dialog ref={dialogRef} className="wz-dialog" aria-label="Add a competitor"
