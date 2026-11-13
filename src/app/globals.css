@@ -82,7 +82,9 @@ body:has(.shell) { background: var(--ink); }
 .content > main > * { max-width:1100px; margin-left:auto; margin-right:auto; }
 .topbar { height:52px; flex:none; display:flex; align-items:center; gap:10px; padding:0 24px; background:#fff; border-bottom:1px solid var(--line); font-size:14px; }
 .crumbs { display:flex; align-items:center; gap:10px; color:var(--muted); } .crumbs a { color:var(--muted); } .crumbs strong { color:var(--fg); }
-.viewing { margin-left:auto; display:flex; align-items:center; gap:8px; background:#ecfbff; border:1px solid #bfeefa; color:#075e74; border-radius:99px; padding:3px 10px 3px 4px; font-size:13px; font-weight:600; }
+.viewing-wrap { margin-left:auto; position:relative; }
+.user-menu.at-top { left:auto; right:0; bottom:auto; top:calc(100% + 8px); box-shadow:0 12px 40px rgba(0,0,0,.18); border:1px solid var(--line); }
+.viewing { display:flex; align-items:center; gap:8px; background:#ecfbff; border:1px solid #bfeefa; color:#075e74; border-radius:99px; padding:3px 10px 3px 4px; font-size:13px; font-weight:600; }
 .viewing .avatar { border-radius:99px; }
 main.plain { background:#fff; min-height:100vh; }
 
@@ -184,7 +186,7 @@ main.plain { background:#fff; min-height:100vh; }
   .user-menu { left:auto; right:0; bottom:auto; top:64px; }
   .subnav { width:auto; margin:0 8px; border-radius:12px; }
   .content { margin:8px; border-radius:12px; }
-  .viewing { display:none; }
+  .viewing-wrap { display:none; }
 }
 
 /* A member's feed: Slack is where they live, this page is the full history. */
