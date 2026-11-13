@@ -25,9 +25,10 @@ export async function addCompetitor(form: FormData) {
   if (existing && !existing.archivedAt) redirect("/settings/competitors?error=" + encodeURIComponent(`${existing.name} is already watched`));
 
   const found = await discoverSources(domain);
-  const res = await createCompetitor(d, { name, domain, sources: found.sources, addedBy: "settings" });
+  const chosen = found.sources.filter((s) => s.checked);
+  const res = await createCompetitor(d, { name, domain, sources: chosen, addedBy: "settings" });
   if (!res.ok) redirect("/settings/competitors?error=" + encodeURIComponent(res.error));
-  const summary = found.sources
+  const summary = chosen
     .map((s) => `${s.label}${s.sample.length ? ` (latest: ${s.sample.slice(0, 3).join("; ")})` : ""}`)
     .join(" · ");
   const msg = res.restored
