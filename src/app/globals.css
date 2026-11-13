@@ -86,6 +86,9 @@ body:has(.shell) { background: var(--ink); }
 .user-menu.at-top { left:auto; right:0; bottom:auto; top:calc(100% + 8px); box-shadow:0 12px 40px rgba(0,0,0,.18); border:1px solid var(--line); }
 .viewing { display:flex; align-items:center; gap:8px; background:#ecfbff; border:1px solid #bfeefa; color:#075e74; border-radius:99px; padding:3px 10px 3px 4px; font-size:13px; font-weight:600; }
 .viewing .avatar { border-radius:99px; }
+.demo-tag { position:relative; margin-left:2px; font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#8a5300; background:#fff4d6; border:1px solid #f5d98b; border-radius:99px; padding:0 7px; cursor:help; }
+.demo-tag::after { content:attr(data-tip); position:absolute; right:-10px; top:calc(100% + 10px); width:280px; padding:10px 12px; border-radius:8px; background:#1d2433; color:#fff; font-size:12.5px; font-weight:400; letter-spacing:0; text-transform:none; line-height:1.45; text-align:left; white-space:normal; box-shadow:0 8px 24px rgba(0,0,0,.2); opacity:0; pointer-events:none; transition:opacity .12s; z-index:20; }
+.demo-tag:hover::after, .demo-tag:focus-visible::after { opacity:1; }
 main.plain { background:#fff; min-height:100vh; }
 
 /* Changes page: one compact row per change; the level says how much it matters; details open in place. */
@@ -202,14 +205,15 @@ main.plain { background:#fff; min-height:100vh; }
 .role-card p { margin:4px 0 0; color:var(--muted); }
 .role-card.me { border-color:#9fdcec; background:#f6fbfc; }
 .you { font-size:11px; font-weight:700; color:#0891b2; background:#e6f7fb; border-radius:99px; padding:1px 7px; margin-left:6px; }
-.people-row { display:flex; gap:10px; align-items:center; padding:7px 0; border-top:1px solid var(--line); font-size:14px; }
+.people-row { display:flex; gap:10px; align-items:baseline; padding:7px 0; border-top:1px solid var(--line); font-size:14px; }
 .card .people-row:first-of-type { border-top:0; }
 .people-row > .avatar.sm { width:24px; height:24px; font-size:11px; border-radius:99px; }
 body .content > main > .people-row { border:0; margin-bottom:10px; }
 .people.ro { opacity:.8; }
 .role-pill { font-size:11.5px; font-weight:700; border-radius:99px; padding:1px 9px; min-width:58px; text-align:center; }
 .r-owner { background:#e8eefe; color:#2f5bea; } .r-member { background:#eef1f4; color:#5d6779; }
-.link-btn { background:none; border:0; color:#b42318; padding:0; font-size:13px; }
+.link-btn { background:none; border:0; color:#b42318; padding:0; font-size:13px; line-height:inherit; }
+.people-row form { display:contents; }
 .people-add { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
 .people-add input { flex:1; min-width:140px; }
 @media (max-width: 760px) { .roles { grid-template-columns:1fr; } }

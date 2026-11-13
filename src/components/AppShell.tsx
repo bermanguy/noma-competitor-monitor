@@ -29,6 +29,8 @@ const Avatar = ({ v, size = 38 }: { v: Viewer; size?: number }) => (
   <span className="avatar" style={{ background: AVATAR[v.team ?? v.key] ?? "#ddd", width: size, height: size, fontSize: size * 0.4 }}>{v.name[0]}</span>
 );
 const roleLine = (v: Viewer) => (v.team ? `${ROLE_NAME[v.role]} · ${TEAM_NAME[v.team] ?? v.team}` : ROLE_NAME[v.role]);
+/** "View as" stands in for sign-in. The roles behind it are real; only who you are is picked by hand. */
+const DEMO_TIP = "Demo mode: anyone with the link can switch between people to see each role. The permissions are real and enforced on the server. Only the sign-in is simulated. In production this would be company SSO.";
 const GROUPS: { role: Role; label: string }[] = [{ role: "builder", label: "Builder" }, { role: "owner", label: "Owners" }, { role: "member", label: "Members" }];
 
 export function AppShell({ viewer, viewers, counts, children }: { viewer: Viewer; viewers: Viewer[]; counts: Partial<Record<BadgeKey, number>>; children: ReactNode }) {
@@ -134,6 +136,7 @@ export function AppShell({ viewer, viewers, counts, children }: { viewer: Viewer
           <div className="viewing-wrap" ref={topRef}>
             <button type="button" className="viewing" onClick={() => setMenu(menu === "top" ? false : "top")} title="Change who you are viewing as" aria-haspopup="menu" aria-expanded={menu === "top"}>
               <Avatar v={viewer} size={22} />Viewing as {viewer.name} · {roleLine(viewer)}
+              <span className="demo-tag" tabIndex={0} aria-label={DEMO_TIP} data-tip={DEMO_TIP} onClick={(e) => e.stopPropagation()}>Demo</span>
             </button>
             {menu === "top" && panel}
           </div>
