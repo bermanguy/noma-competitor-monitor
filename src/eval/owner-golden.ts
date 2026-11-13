@@ -1,13 +1,13 @@
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import type { DB } from "../db/client";
-import { competitor, feedback, goldenItem, item, judgment, team, type Level } from "../db/schema";
+import { competitor, feedback, goldenAnswer, goldenItem, item, judgment, team, type Level } from "../db/schema";
 import { exportGolden } from "./export";
 import { GoldenItem, loadGolden } from "./golden";
 
 /**
  * Closes the feedback loop. A team member marks an item "not useful" in Slack; the owner sees it in
- * "To review", picks the level each team should have got, and the item becomes an exam item. From
- * then on every exam checks the judge against the owner's answer, so the same mistake is caught.
+ * "To review", picks the level each team should have got, and the item becomes a golden-set item. From
+ * then on every eval run checks the judge against the owner's answer, so the same mistake is caught.
  */
 
 export const REVIEW_DAYS = 14;
@@ -78,5 +78,40 @@ export async function ownerGolden(db: DB): Promise<GoldenItem[]> {
 /** The live exam: the golden files plus the owner's items. A file with the same page wins, so nothing is graded twice. */
 export async function examItems(db: DB, files: GoldenItem[] = loadGolden()): Promise<GoldenItem[]> {
   const urls = new Set(files.map((g) => g.url));
-  return [...files, ...(await ownerGolden(db)).filter((g) => !urls.has(g.url))];
+  const all = [...files, ...(await ownerGolden(db)).filter((g) => !urls.has(g.url))];
+  return applyAnswers(all, await goldenAnswers(db));
+}
+
+export type AnswerOverrides = Map<string, Level>;
+const answerKey = (id: string, team: string) => `${id}|${team}`;
+
+/** The answers team owners corrected in the app, by golden id and team. */
+export async function goldenAnswers(db: DB): Promise<AnswerOverrides> {
+  const rows = await db.select().from(goldenAnswer);
+  return new Map(rows.map((r) => [answerKey(r.goldenId, r.teamKey), r.level as Level]));
+}
+
+/** The answer key with each owner's corrections for their own team on top. */
+export function applyAnswers(items: GoldenItem[], answers: AnswerOverrides): GoldenItem[] {
+  if (!answers.size) return items;
+  return items.map((g) => {
+    if (!g.expected) return g;
+    const expected = { ...g.expected };
+    for (const team of Object.keys(expected)) {
+      const a = answers.get(answerKey(g.id, team));
+      if (a) expected[team] = a;
+    }
+    return { ...g, expected };
+  });
+}
+
+/** Re-grades stored outcomes against the current answer key, so a corrected answer counts without re-judging. */
+export function regrade<T extends { id: string; team: string; expected: Level }>(outcomes: T[], answers: AnswerOverrides): T[] {
+  return outcomes.map((o) => ({ ...o, expected: answers.get(answerKey(o.id, o.team)) ?? o.expected }));
+}
+
+/** A team owner sets the right level for their own team on one golden-set item. */
+export async function setGoldenAnswer(db: DB, goldenId: string, teamKey: string, level: Level, by: string) {
+  await db.insert(goldenAnswer).values({ goldenId, teamKey, level, setBy: by })
+    .onConflictDoUpdate({ target: [goldenAnswer.goldenId, goldenAnswer.teamKey], set: { level, setBy: by, setAt: new Date() } });
 }

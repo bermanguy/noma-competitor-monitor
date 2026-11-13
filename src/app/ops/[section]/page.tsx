@@ -9,7 +9,7 @@ import { addSource, retryItem, runExam, runNow, saveCanary, saveCanaryPricing, s
 import { examState } from "@/eval/run";
 import { compareRuns, ownerItemResults, pct } from "@/eval/score";
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { ownerGolden } from "@/eval/owner-golden";
+import { goldenAnswers, ownerGolden, regrade } from "@/eval/owner-golden";
 import { notFound, redirect } from "next/navigation";
 import { computeMetrics } from "@/lib/monitoring";
 import { MonitoringOverview } from "@/components/MonitoringOverview";
@@ -52,6 +52,7 @@ export default async function Ops({ params, searchParams }: { params: Promise<{ 
     .select({ team: judgment.teamKey, useful: sql<number>`sum(case when ${feedback.useful} then 1 else 0 end)`, total: sql<number>`count(*)` })
     .from(feedback).innerJoin(judgment, eq(feedback.judgmentId, judgment.id)).groupBy(judgment.teamKey);
   const exam = await examState(d);
+  const answers = await goldenAnswers(d);
   const ownerItems = await ownerGolden(d);
   const ownerResults = ownerItemResults(exam.last?.outcomes ?? [], ownerItems.map((g) => g.id));
   const [canary] = await d.select().from(setting).where(eq(setting.key, "canary"));
@@ -173,7 +174,8 @@ export default async function Ops({ params, searchParams }: { params: Promise<{ 
           <p className="muted"><strong>Evals test the judge before a change ships.</strong> The golden set is a list of real and made-up items with the right level for each team. A run judges them all with today&apos;s prompts and model and grades the answers. Compare every run with the <strong>baseline</strong>: the run we last agreed was good.</p>
           {exam.running && <><AutoRefresh /><div className="notice">Running… started {localTime(exam.runningSince!)}. It takes about 2 minutes; this page updates on its own.</div></>}
           {exam.last ? (() => {
-            const cmp = compareRuns(exam.last, exam.baseline);
+            const rg = (r: NonNullable<typeof exam.last>) => ({ ...r, outcomes: regrade(r.outcomes, answers) });
+            const cmp = compareRuns(rg(exam.last), exam.baseline ? rg(exam.baseline) : null);
             const tone = { better: "good", same: "", baseline: "", "no-baseline": "", mixed: "warn", worse: "bad" }[cmp.verdict];
             const headline = {
               baseline: "This run is the baseline. Run the evals again after a prompt or model change to compare.",

@@ -1,4 +1,5 @@
 import { and, eq, lt } from "drizzle-orm";
+import { weeklyEval } from "../eval/weekly";
 import type { DB } from "../db/client";
 import { run } from "../db/schema";
 import { assessPending } from "./assess";
@@ -54,6 +55,15 @@ export async function runPipeline(db: DB, trigger: string) {
     stats.ownerNotes = await feedbackNotes(db);
   } catch (e) {
     console.error(`owner stage failed: ${(e as Error).message}`);
+  }
+
+  // Weekly, on the schedule only: the evals run by themselves and tell ops if a team got worse.
+  if (trigger === "schedule" && process.env.ANTHROPIC_API_KEY) {
+    try {
+      stats.weeklyEval = { skipped: 0, ok: 1, worse: 2 }[await weeklyEval(db)];
+    } catch (e) {
+      console.error(`weekly evals failed: ${(e as Error).message}`);
+    }
   }
 
   const summary = `Run ${runId}: ${stats.sources} sources (${stats.sourcesFailed} failed), ${stats.newItems} new, ${stats.judged} judged, ${stats.alerts} alerts, ${stats.digests} digests`;

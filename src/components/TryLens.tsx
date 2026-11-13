@@ -10,8 +10,8 @@ const Tag = ({ level }: { level: string }) => <span className={`lvl lvl-${level}
  * The owner edits their team's description and sees, on their latest changes, what the edit would
  * change. Nothing is saved until they press Save.
  */
-export function TryLens({ teamKey, teamName, lens, tryAction, saveAction }: {
-  teamKey: string; teamName: string; lens: string;
+export function TryLens({ teamKey, teamName, lens, tryAction, saveAction, checking, total }: {
+  teamKey: string; teamName: string; lens: string; checking?: boolean; total?: number;
   tryAction: (prev: State, form: FormData) => Promise<State>;
   saveAction: (form: FormData) => Promise<void>;
 }) {
@@ -22,12 +22,12 @@ export function TryLens({ teamKey, teamName, lens, tryAction, saveAction }: {
       <input type="hidden" name="key" value={teamKey} />
       <input type="hidden" name="back" value={`/settings/preview?team=${teamKey}`} />
       <strong>Fine-tune what {teamName} gets</strong>
-      <p className="muted" style={{ margin: "4px 0 8px" }}>This is the brief the system reads when it decides what matters to {teamName}. Edit it, then try it on your latest changes. Nothing changes until you save.</p>
+      <p className="muted" style={{ margin: "4px 0 8px" }}>This is the brief the system reads when it decides what matters to {teamName}. <strong>1.</strong> Edit it. <strong>2.</strong> Try it on your latest changes (a few seconds). <strong>3.</strong> Save: before it goes live, it is checked on {total ?? "all"} test posts for every team (about 2 minutes), so a fix for {teamName} can&apos;t quietly make another team&apos;s updates worse.</p>
       {/* Remounted after each trial, so the box keeps exactly what the owner tried. */}
       <textarea key={state.lens ?? ""} name="lens" defaultValue={state.lens ?? lens} style={{ minHeight: 140 }} />
       <div className="row" style={{ marginTop: 8, gap: 8 }}>
         <button type="submit" disabled={pending}>{pending ? "Judging your latest changes…" : "Try my edit on the last 5 changes"}</button>
-        <button type="submit" formAction={saveAction} className="secondary" disabled={pending}>Save</button>
+        <button type="submit" formAction={saveAction} className="secondary" disabled={pending || checking}>{checking ? "Checking…" : "Save and check"}</button>
       </div>
       {state.error && <div className="notice bad" style={{ marginTop: 10 }}>{state.error}</div>}
       {state.trials && (

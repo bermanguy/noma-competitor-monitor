@@ -275,3 +275,40 @@ export const mcpCall = pgTable("mcp_call", {
   error: text("error"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("mcp_call_created_idx").on(t.createdAt)]);
+
+export type TeamEditStatus = "checking" | "ready" | "saved" | "saved_anyway" | "discarded" | "failed";
+
+/**
+ * An owner's edit to their team's description, checked on the golden set before it goes live.
+ * "checking": the evals are running with the draft. "ready": done, waiting for the owner because
+ * something got worse. "saved": live (by itself when nothing got worse, or after a fix).
+ * "saved_anyway": live although something got worse; the builder was told.
+ */
+export const teamEdit = pgTable("team_edit", {
+  id: serial("id").primaryKey(),
+  teamKey: text("team_key").notNull(),
+  lens: text("lens").notNull(),
+  /** The description it replaces, so the owner sees both. */
+  previousLens: text("previous_lens").notNull(),
+  status: text("status").$type<TeamEditStatus>().notNull(),
+  /** The eval run with the draft (EvalResult), once finished. */
+  result: jsonb("result"),
+  /** The baseline it was compared with (EvalResult), frozen at the time of the check. */
+  baseline: jsonb("baseline"),
+  error: text("error"),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+}, (t) => [index("team_edit_team_idx").on(t.teamKey)]);
+
+/**
+ * A team owner's own answer for one golden-set item, which replaces the answer key for that team only.
+ * Owners keep their column of the answer key current without touching files or other teams.
+ */
+export const goldenAnswer = pgTable("golden_answer", {
+  goldenId: text("golden_id").notNull(),
+  teamKey: text("team_key").notNull(),
+  level: text("level").notNull(),
+  setBy: text("set_by").notNull(),
+  setAt: timestamp("set_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("golden_answer_uq").on(t.goldenId, t.teamKey)]);

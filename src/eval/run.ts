@@ -34,12 +34,14 @@ export interface StoryCheck { id: string; expected: number | null; got: number |
  * Judges every labelled golden item with the prompt context found in this database, and grades it per team.
  * Without explicit items it runs the live exam: the golden files plus the items the owner added in the app.
  */
-export async function runEval(db: DB, opts: { model?: string; only?: string[]; items?: GoldenItem[] } = {}): Promise<EvalResult> {
+export async function runEval(db: DB, opts: { model?: string; only?: string[]; items?: GoldenItem[]; lens?: { teamKey: string; lens: string } } = {}): Promise<EvalResult> {
   const model = opts.model ?? config.judgeModel;
   const all = opts.items ?? (await examItems(db));
   const items = all.filter((g) => !opts.only || opts.only.includes(g.id));
   const labelled = items.filter((g) => g.expected);
   const ctx = await loadContext(db);
+  // A draft team description, tried on the golden set before it goes live.
+  if (opts.lens) ctx.teams = ctx.teams.map((t) => (t.key === opts.lens!.teamKey ? { ...t, lens: opts.lens!.lens } : t));
   const teamKeys = ctx.teams.map((t) => t.key);
   const before = (await spend(db)).month;
 
@@ -93,6 +95,24 @@ async function getJson<T>(db: DB, key: string): Promise<T | null> {
 async function setJson(db: DB, key: string, value: unknown) {
   const v = JSON.stringify(value);
   await db.insert(setting).values({ key, value: v }).onConflictDoUpdate({ target: setting.key, set: { value: v, updatedAt: new Date() } });
+}
+
+/** Makes a finished run the baseline: the run new runs are compared with. */
+export async function setBaseline(db: DB, r: EvalResult) {
+  await setJson(db, BASELINE, r);
+}
+export async function setLast(db: DB, r: EvalResult) {
+  await setJson(db, LAST, r);
+}
+
+/** One eval run at a time, whoever started it. Returns false when one is already running. */
+export async function claimRunner(db: DB): Promise<boolean> {
+  if ((await examState(db)).running) return false;
+  await setJson(db, RUNNING, { since: new Date().toISOString() });
+  return true;
+}
+export async function releaseRunner(db: DB) {
+  await db.delete(setting).where(eq(setting.key, RUNNING));
 }
 
 export async function examState(db: DB) {
