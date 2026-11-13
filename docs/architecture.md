@@ -1,10 +1,10 @@
 # Architecture
 
-Status: draft for owner review, 2026-11-12. Scope is fixed by [scope.md](scope.md); every component below serves a step in [demo-script.md](demo-script.md).
+Status: detailed reference behind [design.md](design.md), 2026-11-13. Scope is fixed by [scope.md](scope.md); every component below serves a step in [demo-script.md](demo-script.md).
 
 ## In one paragraph
 
-One TypeScript codebase deployed twice on Render: a **web app** (Next.js) with the owner and operator surfaces, and a **pipeline worker** that a Render cron job starts every 3 hours. Both share one Render Postgres database. The worker fetches each source, detects new posts and changed pages, asks Claude to judge each item separately for every team, and posts to Slack. Every stage writes its result to the database before the next stage reads it, so any stage can fail and be retried without redoing or double-sending the others.
+One TypeScript codebase deployed twice on Render: a **web app** (Next.js) with the owner and Builder surfaces, and a **pipeline worker** that a Render cron job starts every 3 hours. Both share one Render Postgres database. The worker fetches each source, detects new posts and changed pages, asks Claude to judge each item separately for every team, and posts to Slack. Every stage writes its result to the database before the next stage reads it, so any stage can fail and be retried without redoing or double-sending the others.
 
 ```mermaid
 flowchart LR
@@ -18,7 +18,7 @@ flowchart LR
   W <--> DB[(Render Postgres)]
   WEB <--> DB
   OWNER((Owner)) --> WEB
-  OPS((Operator)) --> WEB
+  OPS((Builder)) --> WEB
   TEAM((Team member)) -->|feedback link| WEB
   SLACK --> TEAM
   W -->|heartbeat| HB[External heartbeat]
@@ -52,7 +52,7 @@ flowchart TD
 | 4 | Detect | Posts: canonical URL not seen before. Pages: normalised main text differs from the last snapshot by more than a minimum size | First crawl of any source is a silent baseline |
 | 5a | Change gate | Small model decides "meaningful or cosmetic" for page changes, quoting the changed words | Cosmetic changes are kept and visible, just not judged or sent |
 | 5b | Judge | One call per item returns a judgment for every team | Retries on API errors; a run stops judging once the budget cap is hit and resumes next run |
-| 6 | Evidence check | Each evidence quote must appear verbatim in the source text | Quotes not in the source are dropped; a sent judgment left with none gets one quotes-only retry. If that fails it is held back and shown to the operator, never sent (decision 0009) |
+| 6 | Evidence check | Each evidence quote must appear verbatim in the source text | Quotes not in the source are dropped; a sent judgment left with none gets one quotes-only retry. If that fails it is held back and shown to the Builder, never sent (decision 0009) |
 | 7 | Route | Applies each team's noise setting and daily cap | Pure function of stored data, safe to re-run |
 | 8 | Notify | Posts to the team's Slack channel; records each delivery with a unique key | A retry never double-posts |
 | 9 | Health | Flags sources that failed, came back empty, or stayed quiet much longer than their own history; posts to #ops | Heartbeat to an external monitor, which alerts if a run never happens |
@@ -78,7 +78,7 @@ flowchart TD
 
 The owner picks the type when adding a page, and owns the plain-English note on what matters in a pricing change (`src/prompts/owner/page.pricing.md`), which is added to the judge prompt. None of the four competitors publishes prices, so the demo uses a pricing canary with a monthly/yearly toggle. New types (changelog, integrations) follow the same shape: a reader, a verifier and a comparer.
 
-The canary page is served by our own web app and editable from the operator surface, so the demo and the operator can trigger a real change end to end on demand.
+The canary page is served by our own web app and editable from the Builder area, so the demo and the Builder can trigger a real change end to end on demand.
 
 ## Which model does what
 
@@ -91,7 +91,7 @@ The canary page is served by our own web app and editable from the operator surf
 | Same judgment, cheaper candidate | Claude Sonnet 5.5 (`claude-sonnet-5-5`), $2 / $10 | Run against the golden set too; switch if per-team precision holds | eval only | |
 | Grading quality | None | Graded against hand-labelled examples, not by a model grading a model | | $0 |
 
-Estimates assume ~5,000 input and ~1,000 output tokens per judgment. The monthly budget cap is enforced in code and shown on the operator surface. The model for each stage is a setting, so the eval decides, not opinion.
+Estimates assume ~5,000 input and ~1,000 output tokens per judgment. The monthly budget cap is enforced in code and shown on the Builder area. The model for each stage is a setting, so the eval decides, not opinion.
 
 All model calls use structured outputs (a Zod schema with `client.messages.parse()`), so every judgment is typed and validated before it is stored. Page text is passed as clearly delimited untrusted data; the model never chooses URLs, recipients or actions.
 
@@ -125,14 +125,14 @@ flowchart LR
   SL --> FB[Useful / not useful + reason]
   FB --> EX[Recent rated items become<br/>per-team examples in the prompt]
   FB --> GS
-  FB --> UR[Usefulness rate per team<br/>on the operator surface]
+  FB --> UR[Usefulness rate per team<br/>on the Builder area]
 ```
 
 **When evals run.** The golden set is an exam with an answer key, run *before* a change ships: `npm run eval` grades the judge on every labelled item and writes a per-team report to `evals/reports/`. A prompt, lens, level or model change merges only if per-team precision does not drop. Live feedback from Slack is the check *after* shipping, and the two feed each other.
 
 - **Before launch:** the golden set starts with authored cases the live feed rarely produces (a cosmetic edit, a category-language tagline, a price change, an injected instruction, a vague "may explore" claim). After the first live run, `npm run golden:export -- --latest 20` copies real judged items into `evals/golden/` without the model's answer, so the labeller is not anchored on it. Labels start as `draft` and become `owner` once the product owner confirms them.
 - **How it is graded:** "sent" means `alert` or `digest`. Per team: precision (of what we send, how much the team should get), recall (of what it should get, how much we send), exact level, severe misses (a missed alert, or an alert on something irrelevant), and evidence failures. A sent judgment without verbatim evidence counts as not sent, as in production (after the same one retry). Items that repeat an earlier story also name it (`expectedSameStoryAs`), and the report shows how many links the judge got right. `npm run eval -- --save-baseline` records the bar; later runs exit with an error when a team's precision drops.
-- **On every change** to prompts, lenses, levels or models, the operator runs the exam ("Run the exam" on `/ops`, on the server where the API key lives, against the live prompts) and compares it with the saved baseline. `npm run eval` does the same from a laptop.
+- **On every change** to prompts, lenses, levels or models, the Builder runs the exam ("Run the exam" on `/ops`, on the server where the API key lives, against the live prompts) and compares it with the saved baseline. `npm run eval` does the same from a laptop.
 - **Who labels:** each area head owns their team's column of the answer key, because they know best what their team needs. In this build the product owner labels all three as a stand-in.
 - **After launch:** each Slack item carries a feedback link. A "not useful" vote asks why. Rated items are added to the prompt as recent per-team examples. The owner sees every recent "not useful" vote under "To review" in Settings, picks the level each team should have got, and "Add to the exam" stores the item as an exam item (`golden_item` table, same shape as a file in `evals/golden/`) ([0011](decisions/0011-votes-become-exam-items.md)). The exam on `/ops` grades the golden files plus these items, and lists them as "Added by the owner from team votes" with the judge's answer next to the owner's. `npm run eval` from a laptop still grades the files only.
 - **When a score drops, find the cause before changing anything (error analysis).** Read each disagreement with the judge's reason, which `/ops` and the report show, and put it in one bucket:
