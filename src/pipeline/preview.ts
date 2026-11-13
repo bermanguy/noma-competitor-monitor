@@ -73,19 +73,26 @@ export interface LensTrial {
   competitor: string;
   title: string;
   url: string;
+  /** Judged just now with the current wording, in the same way as the edit, so the two compare fairly. */
   before: { level: Level; why: string };
   after: { level: Level; why: string } | null;
+  /** The level the team actually got when it was first judged, shown only when it differs from `before`. */
+  sent: Level;
   error?: string;
 }
 
 /**
- * Re-judges this team's latest changes with a draft description, without saving anything, so an
- * owner sees what their edit would change before they save it. Only this team is judged.
+ * Re-judges this team's latest changes twice, side by side: once with the current description and
+ * once with the draft, each with all teams in the call exactly as the pipeline does it. Comparing two
+ * fresh answers, not a fresh answer with an old stored one, keeps the judge's run-to-run variance and
+ * any prompt changes since then from showing up as "your edit changed this". Saves nothing.
  */
 export async function tryLens(db: DB, teamKey: string, draftLens: string, limit = 5): Promise<LensTrial[]> {
   const ctx = await loadContext(db);
   const t = ctx.teams.find((x) => x.key === teamKey);
   if (!t) throw new Error(`no team ${teamKey}`);
+  const current = ctx.teams.map((x) => ({ key: x.key, name: x.name, lens: x.lens }));
+  const draft = current.map((x) => (x.key === teamKey ? { ...x, lens: draftLens } : x));
   const since = new Date(Date.now() - 30 * 864e5);
   const rows = await db
     .select({ i: item, c: competitor, pageType: source.pageType, j: judgment })
@@ -98,18 +105,27 @@ export async function tryLens(db: DB, teamKey: string, draftLens: string, limit 
     .limit(limit);
 
   return Promise.all(rows.map(async ({ i, c, pageType, j }): Promise<LensTrial> => {
-    const base = { itemId: i.id, competitor: c.name, title: i.title ?? i.url, url: i.url, before: { level: j.level, why: j.why } };
+    const base = { itemId: i.id, competitor: c.name, title: i.title ?? i.url, url: i.url, sent: j.level };
+    const stored = { level: j.level, why: j.why };
     try {
-      const r = await judgeItem(db, undefined, {
+      const earlier = await earlierItems(db, c.id, i.id);
+      const judge = (teams: typeof current) => judgeItem(db, undefined, {
         competitor: c.name, kind: i.kind, pageType, url: i.url, title: i.title, publishedAt: i.publishedAt,
-        text: i.text, diff: i.diff, teams: [{ key: t.key, name: t.name, lens: draftLens }], topics: ctx.topics, examples: ctx.examples,
+        text: i.text, diff: i.diff, teams, topics: ctx.topics, examples: ctx.examples,
         company: ctx.owner.company, levels: ctx.owner.levels, pageGuidance: pageType === "pricing" ? ctx.owner["page.pricing"] : undefined,
-        earlier: await earlierItems(db, c.id, i.id),
+        earlier,
       });
-      const mine = r.judgments.find((x) => x.team === t.key);
-      return { ...base, after: mine ? { level: mine.level, why: mine.why } : null, error: mine ? undefined : "No answer for this team" };
+      const [now, edit] = await Promise.all([judge(current), judge(draft)]);
+      const a = now.judgments.find((x) => x.team === teamKey);
+      const b = edit.judgments.find((x) => x.team === teamKey);
+      return {
+        ...base,
+        before: a ? { level: a.level, why: a.why } : stored,
+        after: b ? { level: b.level, why: b.why } : null,
+        error: b ? undefined : "No answer for this team",
+      };
     } catch (e) {
-      return { ...base, after: null, error: e instanceof BudgetExceeded ? "The monthly model budget is used up" : "Could not judge this one" };
+      return { ...base, before: stored, after: null, error: e instanceof BudgetExceeded ? "The monthly model budget is used up" : "Could not judge this one" };
     }
   }));
 }
