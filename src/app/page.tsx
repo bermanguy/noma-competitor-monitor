@@ -124,7 +124,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
           <input type="search" name="q" defaultValue={sp.q} placeholder="Search title or summary" aria-label="Search" />
         </form>
         <FilterMenu label="Company" clearParam="company" value={companies.find((c) => String(c.id) === sp.company)?.name}
-          groups={[{ param: "company", options: companies.map((c) => ({ value: String(c.id), label: c.name, domain: c.domain, count: inRange.filter((x) => x.c.id === c.id).length })) }]} />
+          groups={[{ param: "company", options: companies.map((c) => ({ value: String(c.id), label: c.name, domain: c.domain, canary: inRange.some((x) => x.c.id === c.id && x.i.isCanary), count: inRange.filter((x) => x.c.id === c.id).length })) }]} />
         <FilterMenu label="Date" value={DATES[dateKey]!.label} groups={[{ param: "date", options: Object.entries(DATES).map(([k, v]) => ({ value: k, label: v.label })) }]} />
         <FilterMenu label={sp.topic ? "Topic" : "Filter"} dashed={!sp.topic} clearParam="topic" value={sp.topic}
           groups={[
@@ -150,7 +150,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
               {first && <div className="ch-grp">{g}<span>{visible.filter((y) => groupOf(y.i.firstSeenAt) === g).length}</span></div>}
               <details className="ch-row">
                 <summary>
-                  <CompanyLogo name={x.c.name} domain={x.c.domain} />
+                  <CompanyLogo name={x.c.name} domain={x.c.domain} canary={x.i.isCanary} />
                   <div className="ch-main">
                     <div className="ch-l1">
                       <span className="ch-co">{x.c.name}</span><span className="ch-kind">· {KIND[x.i.kind] ?? x.i.kind}</span>
