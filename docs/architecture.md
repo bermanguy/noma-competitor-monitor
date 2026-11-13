@@ -1,6 +1,6 @@
 # Architecture
 
-Status: detailed reference behind [design.md](design.md), 2026-11-13. Scope is fixed by [scope.md](scope.md); every component below serves a step in [demo-script.md](demo-script.md).
+Status: detailed reference behind [design.md](design.md), 2026-11-13. Scope is fixed by [scope.md](scope.md).
 
 ## In one paragraph
 
@@ -186,7 +186,7 @@ src/prompts/        scaffolding (Claude-owned) and lenses/levels/topics (owner-o
 src/db/             Drizzle schema and migrations
 scripts/            run-pipeline.ts (cron entrypoint), eval.ts
 evals/golden/       labelled items
-docs/               scope, demo script, architecture, decisions, research
+docs/               scope, architecture, decisions, research
 ```
 
 ## How it grows

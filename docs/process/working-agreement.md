@@ -12,7 +12,6 @@ There is one AI in the loop. A second opinion comes from an independent review p
 ## One source of truth
 
 - [`docs/scope.md`](../scope.md) is the frozen MVP scope. Neither of us works outside it until Guy changes it there.
-- [`docs/demo-script.md`](../demo-script.md) is the five-minute demo, step by step. Every plan and every PR points at a step in it.
 - The repository is the record: `docs/` for the brief, architecture, decisions and research; `docs/decisions/` for each decision with its reason.
 - The project thread is the conversation. Anything decided there is written into the repo the same day.
 - No separate status file to keep in sync. Status lives in the PR list and the checklist in the thread.
@@ -35,7 +34,7 @@ There is one AI in the loop. A second opinion comes from an independent review p
 
 ## Definition of done for any change
 
-1. It moves a step in [the demo script](../demo-script.md) or a golden example forward. If it doesn't, it waits.
+1. It moves something in [the scope](../scope.md) or a golden example forward. If it doesn't, it waits.
 2. CI is green: typecheck, lint, unit tests, and the eval run when prompts or scoring change.
 3. The PR states what was verified and how (test output, eval numbers, screenshot), and labels anything unverified.
 
@@ -50,7 +49,7 @@ There is one AI in the loop. A second opinion comes from an independent review p
 
 ## Rhythm until submission
 
-- Morning: Claude posts the plan for the day as demo-script steps.
+- Morning: Claude posts the plan for the day.
 - Evening: Claude posts what is live, what the evals say, and the one or two decisions needed tomorrow.
 - Submission is Sunday 10:00 (Asia/Jerusalem); the presentation is Sunday 14:00.
 - Code freeze Saturday evening. The design doc is written Saturday night or Sunday morning, as a summary of `architecture.md`, `scope.md` and the decision records, which every PR keeps current.
