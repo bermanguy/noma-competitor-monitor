@@ -60,7 +60,7 @@ export async function CompetitorsSetup({ d, comps, removed, srcs, canFix }: { d:
           return (
             <section key={c.id} className={`co-card${c.active ? "" : " paused"}${canary ? " canary" : ""}`}>
               <header className="co-hd">
-                <CompanyLogo name={c.name} domain={c.domain} size={40} canary={canary} />
+                <CompanyLogo id={c.id} name={c.name} domain={c.domain} size={40} canary={canary} />
                 <div className="co-id">
                   <strong>{canary ? "Canary" : c.name}</strong>
                   <span className="muted">{canary ? "Our test page, proves the path end to end" : <a href={`https://${c.domain}`} target="_blank" rel="noreferrer">{c.domain}</a>}</span>
@@ -135,7 +135,7 @@ export async function CompetitorsSetup({ d, comps, removed, srcs, canFix }: { d:
             <form key={c.id} action={archiveCompetitorAction} className="co-rrow">
               <input type="hidden" name="id" value={c.id} />
               <input type="hidden" name="archived" value="0" />
-              <CompanyLogo name={c.name} domain={c.domain} size={22} />
+              <CompanyLogo id={c.id} name={c.name} domain={c.domain} size={22} />
               <strong>{c.name}</strong><span className="muted">{host(c.domain)}{c.archivedAt ? ` · removed ${ago(c.archivedAt, now)}` : ""}</span>
               <button className="secondary sm">Restore</button>
             </form>

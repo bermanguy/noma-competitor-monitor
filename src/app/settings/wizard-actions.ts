@@ -7,6 +7,8 @@ import { competitor, item, run, snapshot, source } from "@/db/schema";
 import { createCompetitor, normalizeDomain } from "@/lib/competitors";
 import { discoverSources, findPosts, titleFromUrl, type Proposed, type SourceRole } from "@/pipeline/discover";
 import { collectSource } from "@/pipeline/collect";
+import { assessPending } from "@/pipeline/assess";
+import { saveLogo } from "@/pipeline/logo";
 import { fetchSource } from "@/pipeline/fetch";
 import { extractMain } from "@/pipeline/extract";
 import type { PricingSnapshot } from "@/pipeline/pricing";
@@ -73,6 +75,8 @@ export async function createFromWizardAction(name: string, domain: string, chose
   const sources = rows
     .filter((r) => res.sourceIds.includes(r.id))
     .map((r) => ({ id: r.id, label: r.label, role: chosen.find((c) => c.url === r.url)?.role ?? (r.pageType === "pricing" ? "pricing" : r.kind === "page" ? "product" : "posts") }));
+  // The logo is found and kept in the background; the page shows the site icon until it is in.
+  void saveLogo(d, res.competitor.id, res.competitor.domain);
   // A finished run row to hang the first checks on. It is never "running", so it can't block the scheduled run.
   const [r] = await d.insert(run).values({ status: "ok", trigger: "first-check", finishedAt: new Date() }).returning({ id: run.id });
   revalidatePath("/", "layout");
@@ -98,7 +102,12 @@ export async function firstCheckAction(sourceId: number, runId: number): Promise
   return { ok: true, text: "Snapshot saved" };
 }
 
-export async function finishWizardAction() {
+/**
+ * After the first check: judge the latest posts now, in the background, so they show up in Changes within
+ * a few minutes instead of after the next scheduled run.
+ */
+export async function finishWizardAction(runId: number) {
+  void assessPending(db(), runId).catch((e) => console.error("first-check judging failed", e));
   revalidatePath("/", "layout");
 }
 

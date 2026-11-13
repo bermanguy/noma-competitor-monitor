@@ -18,6 +18,16 @@ export const competitor = pgTable("competitor", {
   addedBy: text("added_by"),
 }, (t) => [uniqueIndex("competitor_domain_uq").on(t.domain)]);
 
+/** A competitor's logo, fetched from its site when it is added, kept so it shows even if the site changes or blocks us. */
+export const competitorLogo = pgTable("competitor_logo", {
+  competitorId: integer("competitor_id").primaryKey().references(() => competitor.id),
+  contentType: text("content_type").notNull(),
+  /** Base64 image bytes; logos are capped at 200 KB. */
+  data: text("data").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type SourceKind = "feed" | "listing" | "page";
 export type FetchMode = "http" | "browser";
 /** For watched pages: which skill reads the page. "general" = text diff + gate; "pricing" = plans and prices compared field by field. */

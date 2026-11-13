@@ -134,7 +134,7 @@ export function AddCompetitorWizard({ trigger = "card" }: { trigger?: "card" | "
         }));
       }),
     );
-    await call(finishWizardAction(), 10_000);
+    await call(finishWizardAction(r.runId), 10_000);
   }
 
   const chosenCount = found?.sources.filter((s) => s.checked).length ?? 0;
@@ -274,7 +274,7 @@ export function AddCompetitorWizard({ trigger = "card" }: { trigger?: "card" | "
                   })}
                   <div className="wz-sum">
                     {created.restored && <>{name}&apos;s earlier history is back. </>}
-                    The latest few posts show up in Changes marked as published before monitoring; older ones are kept as history only. From the next check (within 3 hours) you&apos;ll see <b>new posts and real changes</b> in <b>Changes</b>, sorted by team.
+                    The latest few posts are being judged now and show up in Changes in a few minutes, marked <b>Before monitoring</b>; older ones are kept as history only. From the next check (within 3 hours) you&apos;ll see <b>new posts and real changes</b> in <b>Changes</b>, sorted by team.
                     {failed > 0 && <> Pages we couldn&apos;t read show up under <b>Needs attention</b>, and the Builder is told.</>}
                   </div>
                 </div>

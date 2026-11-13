@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { competitor, person, source, team, topic, type NoiseLevel, type PageType, type PersonRole } from "@/db/schema";
 import { discoverSources } from "@/pipeline/discover";
+import { saveLogo } from "@/pipeline/logo";
 import { archiveCompetitor, createCompetitor, normalizeDomain } from "@/lib/competitors";
 import { OWNER_TEXTS, restoreOwnerText, setOwnerText, type OwnerTextKey } from "@/lib/owner-text";
 import { applySuggestion, dismissSuggestion } from "@/pipeline/own-site";
@@ -29,6 +30,7 @@ export async function addCompetitor(form: FormData) {
   const chosen = found.sources.filter((s) => s.checked);
   const res = await createCompetitor(d, { name, domain, sources: chosen, addedBy: "settings" });
   if (!res.ok) redirect("/settings/competitors?error=" + encodeURIComponent(res.error));
+  void saveLogo(d, res.competitor.id, res.competitor.domain);
   const summary = chosen
     .map((s) => `${s.label}${s.sample.length ? ` (latest: ${s.sample.slice(0, 3).join("; ")})` : ""}`)
     .join(" · ");

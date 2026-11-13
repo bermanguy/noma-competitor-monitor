@@ -24,18 +24,20 @@ function CanaryIcon({ size }: { size: number }) {
 }
 
 /** The company's own site icon, or a coloured letter tile when the site has none. The canary gets its own bird. */
-export function CompanyLogo({ name, domain, size = 28, canary }: { name: string; domain: string; size?: number; canary?: boolean }) {
+export function CompanyLogo({ id, name, domain, size = 28, canary }: { id?: number; name: string; domain: string; size?: number; canary?: boolean }) {
   // Many sites (Webflow, Framer) have no /favicon.ico and declare their icon in the page instead, so a
   // missing favicon falls back to Google's icon service, which reads the page. Then a letter tile.
+  // The logo we kept when the competitor was added comes first; then the site icon, Google's icon service, a letter tile.
+  const sources = [...(id ? [`/logo/${id}`] : []), `https://${domain}/favicon.ico`, `https://www.google.com/s2/favicons?domain=${domain}&sz=64`];
   const [step, setStep] = useState(0);
-  const failed = step >= 2;
+  const failed = step >= sources.length;
   const next = () => setStep((n) => n + 1);
   const img = useRef<HTMLImageElement>(null);
   // The icon can fail to load before React attaches onError (the page is rendered on the server), and then
   // onError never fires and the browser shows its broken-image box. Check once on mount to catch that case.
   useEffect(() => {
     const el = img.current;
-    if (el?.complete && el.naturalWidth < 8) next();
+    if (el?.complete && el.naturalWidth < 8 && !sources[step]?.startsWith("/logo/")) next();
   }, [step]);
   if (canary) return <CanaryIcon size={size} />;
   const color = TILE[[...name].reduce((n, ch) => n + ch.charCodeAt(0), 0) % TILE.length];
@@ -45,8 +47,8 @@ export function CompanyLogo({ name, domain, size = 28, canary }: { name: string;
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img ref={img} className="co-logo" style={style} key={step} src={step === 0 ? `https://${domain}/favicon.ico` : `https://www.google.com/s2/favicons?domain=${domain}&sz=64`} alt="" onError={next}
+    <img ref={img} className="co-logo" style={style} key={step} src={sources[step]} alt="" onError={next}
       // Google answers an unknown site with a 16px globe: treat that as no icon.
-      onLoad={(e) => { if (e.currentTarget.naturalWidth < (step === 0 ? 8 : 17)) next(); }} />
+      onLoad={(e) => { const src = sources[step]!; if (!src.startsWith("/logo/") && e.currentTarget.naturalWidth < (src.includes("google.com") ? 17 : 8)) next(); }} />
   );
 }

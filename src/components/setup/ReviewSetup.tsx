@@ -8,7 +8,7 @@ import { localShort } from "@/lib/time";
 
 type Team = typeof team.$inferSelect;
 type Done = { itemId: number; g: GoldenItem; at: Date };
-type Company = { name: string; domain: string };
+type Company = { id?: number; name: string; domain: string };
 
 /**
  * Setup › To review: the open votes on top, and what was already answered on its own tab, so a handled
@@ -19,7 +19,7 @@ export function ReviewSetup({ open, done, teams, show, company }: { open: Review
   const teamName = (k: string) => teams.find((t) => t.key === k)?.name ?? k;
   const Logo = ({ name, test }: { name: string; test?: boolean }) => {
     const c = company(name);
-    return <CompanyLogo name={name} domain={c?.domain ?? ""} size={32} canary={test} />;
+    return <CompanyLogo id={c?.id} name={name} domain={c?.domain ?? ""} size={32} canary={test} />;
   };
   return (
     <div className="rv-page">
