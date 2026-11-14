@@ -120,11 +120,10 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
   const shortName = (n: string) => n.replace(/\s*\(.*\)\s*$/, "");
   const shownList = companies.filter((c) => shown.has(c.id));
   const hiddenList = companies.filter((c) => !shown.has(c.id));
+  // The pill names the companies shown, comma-separated: two names, then "+N" for the rest.
   const companyValue = hiddenList.length === 0 ? undefined
-    : shownList.length === 1 ? shortName(shownList[0]!.name)
-    : hiddenList.length === 1 ? `All but ${shortName(hiddenList[0]!.name)}`
-    : hiddenList.length <= 2 ? `All but ${hiddenList.map((c) => shortName(c.name)).join(", ")}`
-    : `${shownList.length} of ${companies.length}`;
+    : shownList.length === 0 ? "None"
+    : shownList.slice(0, 2).map((c) => shortName(c.name)).join(", ") + (shownList.length > 2 ? ` +${shownList.length - 2}` : "");
   const hasFilters = !!(!defaultCompanies || sp.topic || sp.q || level || dateKey !== "30" || sp.all);
 
   return (
