@@ -2,7 +2,8 @@ import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { config } from "../config";
 import type { DB } from "../db/client";
 import { competitor, item, snapshot, source, sourceRun } from "../db/schema";
-import { extractListingLinks, extractMain, parseFeed } from "./extract";
+import { extractListingLinks, extractMain, isGenericTitle, parseFeed } from "./extract";
+import { titleFromUrl } from "./discover";
 import { fetchSource } from "./fetch";
 import { gateChange } from "./judge";
 import { diffPricing, extractPricing, formatPricingChanges, verifyPricing, type PricingSnapshot } from "./pricing";
@@ -124,7 +125,7 @@ async function collectPosts(db: DB, s: Source, c: Competitor, body: string, fina
     const inserted = await db.insert(item).values({
       // A listing link's text often runs the author, title, teaser and tags together, or is just "Read".
       // The post's own title is cleaner; a feed's title is already clean.
-      ...base, title: (s.kind === "feed" ? e.title ?? ex.title : ex.title ?? e.title), publishedAt: published,
+      ...base, title: (s.kind === "feed" ? [e.title, ex.title] : [ex.title, e.title]).find((t) => !isGenericTitle(t)) ?? titleFromUrl(e.url), publishedAt: published,
       text: ex.text, status: "pending", isBackfill: backfill,
       statusDetail: backfill ? "published before monitoring started" : null,
     }).onConflictDoNothing().returning({ id: item.id });
