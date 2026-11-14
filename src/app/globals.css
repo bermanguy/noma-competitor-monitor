@@ -542,3 +542,7 @@ a.rv-title:hover { color:var(--accent); }
   .rv-drow > summary { flex-wrap:wrap; } .rv-answers { justify-content:flex-start; flex-basis:100%; padding-left:44px; }
   .rv-title { white-space:normal; }
 }
+a.btn { display:inline-block; padding:6px 14px; border-radius:6px; border:1px solid var(--accent); background: var(--accent); color:#fff; text-decoration:none; white-space:nowrap; }
+.notice.fix-next { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.pinned { border:1px solid #c9d7ff; background:#f6f8ff; border-radius:8px; padding:8px 10px; margin:0 0 8px; font-size:14px; }
+.pinned .muted { margin-right:6px; }

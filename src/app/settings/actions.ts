@@ -4,7 +4,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db/client";
-import { competitor, person, source, team, topic, type NoiseLevel, type PageType, type PersonRole } from "@/db/schema";
+import { competitor, judgment, person, source, team, topic, type NoiseLevel, type PageType, type PersonRole } from "@/db/schema";
 import { discoverSources } from "@/pipeline/discover";
 import { saveLogo } from "@/pipeline/logo";
 import { archiveCompetitor, createCompetitor, normalizeDomain } from "@/lib/competitors";
@@ -193,6 +193,16 @@ export async function restoreOwnerTextAction(form: FormData) {
 
 const LEVELS = ["alert", "digest", "log", "none"] as const;
 
+/**
+ * After an owner saves the right answer, offers to fix the wording of the first of their teams that got
+ * a different level, so the same mistake doesn't happen again. Empty when every level was already right.
+ */
+async function fixParam(itemId: number, answers: Record<string, Level>): Promise<string> {
+  const rows = await db().select({ teamKey: judgment.teamKey, level: judgment.level }).from(judgment).where(eq(judgment.itemId, itemId));
+  const wrong = rows.find((r) => answers[r.teamKey] && answers[r.teamKey] !== r.level);
+  return wrong ? `fix=${itemId}&fixTeam=${encodeURIComponent(wrong.teamKey)}&` : "";
+}
+
 /** The owner turns an item a team marked not useful into a golden-set item, with the right level for each team. */
 export async function addToExamAction(form: FormData) {
   const itemId = Number(form.get("itemId"));
@@ -207,13 +217,15 @@ export async function addToExamAction(form: FormData) {
     const mine = Object.entries(expected).filter(([k]) => canEditTeam(viewer, k));
     for (const [k, level] of mine) await setGoldenAnswer(db(), goldenId, k, level, viewer.name);
     revalidatePath("/settings", "layout");
-    redirect("/settings/review?" + (mine.length
+    redirect("/settings/review?" + (await fixParam(itemId, Object.fromEntries(mine))) + (mine.length
       ? "added=" + encodeURIComponent(`Saved. This post was already in the golden set, so ${mine.length === 1 ? "that team's answer" : "the answers"} now read${mine.length === 1 ? "s" : ""} as you set ${mine.length === 1 ? "it" : "them"}, from the next eval run on.`)
       : "error=" + encodeURIComponent("You can only answer for your own team")));
   }
   const g = await addToExam(db(), itemId, expected, String(form.get("note") ?? ""));
   revalidatePath("/settings", "layout");
-  redirect("/settings/review?" + (g
+  const viewer = await currentViewer();
+  const fix = g ? await fixParam(itemId, Object.fromEntries(Object.entries(expected).filter(([k]) => canEditTeam(viewer, k)))) : "";
+  redirect("/settings/review?" + fix + (g
     ? "added=" + encodeURIComponent(`Added to the golden set. From the next eval run on, the judge is checked against your answer for "${g.title ?? g.url}".`)
     : "error=" + encodeURIComponent("That item could not be added")) + "#review");
 }
@@ -257,8 +269,9 @@ export async function tryLensAction(_prev: { trials?: LensTrial[]; lens?: string
   if (!canEditTeam(await currentViewer(), key)) return { lens, error: "Only that team's owner (or the builder) can try changes to it" };
   if (lens.length < 40) return { lens, error: "Describe what the team cares about in at least a sentence or two" };
   try {
-    const trials = await tryLens(db(), key, lens);
-    return trials.length ? { lens, trials } : { lens, error: "There are no changes from the last 30 days to try it on yet" };
+    const itemId = Number(form.get("itemId")) || undefined;
+    const trials = await tryLens(db(), key, lens, 5, itemId);
+    return trials.length ? { lens, trials } : { lens, error: itemId ? "That post isn't there anymore" : "There are no changes from the last 30 days to try it on yet" };
   } catch (e) {
     console.error("tryLens failed", e);
     return { lens, error: "Could not run the trial. Try again in a minute." };

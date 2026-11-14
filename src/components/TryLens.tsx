@@ -10,23 +10,32 @@ const Tag = ({ level }: { level: string }) => <span className={`lvl lvl-${level}
  * The owner edits their team's description and sees, on their latest changes, what the edit would
  * change. Nothing is saved until they press Save.
  */
-export function TryLens({ teamKey, teamName, lens, tryAction, saveAction, checking, total }: {
+export function TryLens({ teamKey, teamName, lens, tryAction, saveAction, checking, total, pinned }: {
   teamKey: string; teamName: string; lens: string; checking?: boolean; total?: number;
+  /** The post the owner came from To review to fix: the trial judges just this one. */
+  pinned?: { itemId: number; competitor: string; title: string; url: string; level: string };
   tryAction: (prev: State, form: FormData) => Promise<State>;
   saveAction: (form: FormData) => Promise<void>;
 }) {
   const [state, run, pending] = useActionState(tryAction, {});
   const changed = state.trials?.filter((t) => t.after && t.after.level !== t.before.level).length ?? 0;
   return (
-    <form className="card tune" action={run}>
+    <form className="card tune" action={run} id="fix">
       <input type="hidden" name="key" value={teamKey} />
+      {pinned && <input type="hidden" name="itemId" value={pinned.itemId} />}
       <input type="hidden" name="back" value={`/settings/preview?team=${teamKey}`} />
       <strong>Fine-tune what {teamName} gets</strong>
-      <p className="muted" style={{ margin: "4px 0 8px" }}>This is the brief the system reads when it decides what matters to {teamName}. <strong>1.</strong> Edit it. <strong>2.</strong> Try it on your latest changes: each one is judged again with the current wording and with yours, side by side (about 20 seconds). <strong>3.</strong> Save: before it goes live, it is checked on {total ?? "all"} test posts (about 2 minutes). Each team is judged on its own, so your wording can&apos;t change another team&apos;s updates.</p>
+      <p className="muted" style={{ margin: "4px 0 8px" }}>This is the brief the system reads when it decides what matters to {teamName}. <strong>1.</strong> Edit it. <strong>2.</strong> {pinned ? <>Try it on this post: it is judged again with the current wording and with yours, side by side (about 10 seconds).</> : <>Try it on your latest changes: each one is judged again with the current wording and with yours, side by side (about 20 seconds).</>} <strong>3.</strong> Save: before it goes live, it is checked on {total ?? "all"} test posts (about 2 minutes). Each team is judged on its own, so your wording can&apos;t change another team&apos;s updates.</p>
+      {pinned && (
+        <div className="pinned">
+          <span className="muted">Testing on</span><strong>{pinned.competitor}</strong> · <a href={pinned.url} target="_blank" rel="noreferrer">{pinned.title}</a> · {teamName} got <Tag level={pinned.level} />
+          {" "}<a className="muted small" href={`/settings/preview?team=${teamKey}#fix`}>Try on the latest changes instead</a>
+        </div>
+      )}
       {/* Remounted after each trial, so the box keeps exactly what the owner tried. */}
       <textarea key={state.lens ?? ""} name="lens" defaultValue={state.lens ?? lens} style={{ minHeight: 140 }} />
       <div className="row" style={{ marginTop: 8, gap: 8 }}>
-        <button type="submit" disabled={pending}>{pending ? "Judging your latest changes…" : "Try my edit on the last 5 changes"}</button>
+        <button type="submit" disabled={pending}>{pending ? (pinned ? "Judging this post…" : "Judging your latest changes…") : (pinned ? "Try my edit on this post" : "Try my edit on the last 5 changes")}</button>
         <button type="submit" formAction={saveAction} className="secondary" disabled={pending || checking}>{checking ? "Checking…" : "Save and check"}</button>
       </div>
       {state.error && <div className="notice bad" style={{ marginTop: 10 }}>{state.error}</div>}
