@@ -10,6 +10,13 @@ const listing = `<html><head><link rel="alternate" type="application/rss+xml" hr
 <a href="/blog/mcp-attacks">MCP attacks in the wild</a></body></html>`;
 
 describe("extractListingLinks", () => {
+  it("drops button text like Read as a title, keeping the card's real heading", () => {
+    const html = `<a href="/blog/vanta-to-acquire-pillar"><h3>Vanta to Acquire Pillar</h3></a><a href="/blog/vanta-to-acquire-pillar">Read</a><a href="/blog/other-post-here">Read more →</a>`;
+    const links = extractListingLinks(html, "https://pillar.test/blog", "/blog");
+    expect(links.find((l) => l.url.endsWith("pillar"))?.title).toBe("Vanta to Acquire Pillar");
+    expect(links.find((l) => l.url.endsWith("here"))?.title).toBeNull();
+  });
+
   it("finds article links under the prefix, deduped, without category, pagination or external links", () => {
     const links = extractListingLinks(listing, "https://zenity.io/blog", "/blog");
     expect(links.map((l) => l.url).sort()).toEqual(["https://zenity.io/blog/launching-guardian-agents", "https://zenity.io/blog/mcp-attacks"]);

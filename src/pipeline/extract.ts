@@ -102,6 +102,10 @@ export interface DiscoveredLink {
  * Article links on a blog listing: same site, path under the prefix, deeper than the prefix itself,
  * not a category, tag or pagination page.
  */
+/** Button text on a post card ("Read", "Read more"), not a title. */
+export const isGenericTitle = (t: string | null | undefined) =>
+  !t || /^(read|read more|read article|read post|read story|learn more|more|continue reading|view|view post|see more|details)?[\s→›»]*$/i.test(t.trim());
+
 export function extractListingLinks(html: string, pageUrl: string, prefix: string): DiscoveredLink[] {
   const doc = dom(html, pageUrl).window.document;
   const base = new URL(pageUrl);
@@ -120,7 +124,8 @@ export function extractListingLinks(html: string, pageUrl: string, prefix: strin
     if (u.search && /page=|category=|tag=/i.test(u.search)) continue;
     // A card link holds the category, date, title and teaser together; its heading is the title.
     const heading = a.querySelector("h1,h2,h3,h4,h5,[class*=title i]");
-    const title = (heading ?? a).textContent?.replace(/\s+/g, " ").trim() || null;
+    const text = (heading ?? a).textContent?.replace(/\s+/g, " ").trim() || null;
+    const title = isGenericTitle(text) ? null : text;
     const prev = seen.get(url);
     if (!prev || (title && (!prev.title || title.length > prev.title.length))) seen.set(url, { url, title });
   }
