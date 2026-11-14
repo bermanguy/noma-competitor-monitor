@@ -6,6 +6,7 @@ import { allViewers, currentViewer } from "@/lib/viewer";
 import { feedbackUrl } from "@/pipeline/slack";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { FilterMenu } from "@/components/FilterMenu";
+import { companyParams, isDefaultCompanies, shownCompanies } from "@/lib/company-filter";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ const DATES: Record<string, { label: string; days: number | null }> = {
 const KIND: Record<string, string> = { post: "Blog post", page_change: "Page change" };
 const NOT_JUDGED: Record<string, string> = { cosmetic: "Not judged: cosmetic change", held: "Not judged: held back", failed: "Not judged: failed" };
 
-type Params = { team?: string; level?: string; company?: string; date?: string; topic?: string; q?: string; all?: string };
+type Params = { team?: string; level?: string; company?: string; hide?: string; date?: string; topic?: string; q?: string; all?: string };
 
 function LevelIcon({ level }: { level: Level }) {
   if (level === "alert") return <svg className="lv-i" viewBox="0 0 16 16" aria-hidden><circle cx="8" cy="8" r="6.5" fill="currentColor" /><path d="M8.6 3.8 5.6 8.7h2.3l-.6 3.5 3.1-5h-2.3z" fill="#fff" /></svg>;
@@ -69,6 +70,18 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
     for (const id of dl.judgmentIds) if (!sent.has(id) || dl.kind === "alert") sent.set(id, { kind: dl.kind, at: dl.createdAt });
   }
 
+  // Every competitor we watch is in the Company menu, even one with nothing in range yet (just added, or quiet).
+  // A member never sees test pages, so the Canary isn't in their menu at all.
+  const isCanaryCo = (c: { id: number; name: string }) => /canary/i.test(c.name) || rows.some((x) => x.c.id === c.id && x.i.isCanary);
+  const companies = (await d.select().from(competitor).where(isNull(competitor.archivedAt)))
+    .filter((c) => !member || !isCanaryCo(c))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  // The Company filter shows several companies at once. Test pages (Canary) are off by default for everyone; ticking them shows them again.
+  const allIds = companies.map((c) => c.id);
+  const canaryIds = companies.filter(isCanaryCo).map((c) => c.id);
+  const shown = shownCompanies(sp, allIds, canaryIds);
+  const defaultCompanies = isDefaultCompanies(shown, allIds, canaryIds);
+
   // Every filter except level, so the level tabs can count what each tab would show.
   const q = sp.q?.trim().toLowerCase();
   const base = rows
@@ -83,7 +96,7 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
     .filter((x) => x.i.status !== "judged" || x.top !== "none")
     .filter((x) => x.i.firstSeenAt >= since)
     .filter((x) => !member || !x.i.isCanary)
-    .filter((x) => !sp.company || String(x.c.id) === sp.company)
+    .filter((x) => shown.has(x.c.id))
     .filter((x) => !sp.topic || x.topics.includes(sp.topic))
     .filter((x) => !q || `${x.i.title ?? ""} ${x.summary ?? ""} ${x.c.name}`.toLowerCase().includes(q));
   const count = (l?: Level) => base.filter((x) => !l || x.top === l).length;
@@ -93,8 +106,6 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
   // Options for the menus, from the rows in the current team and date range.
   // A member never sees test pages; the Builder and owners do, labelled "Test page".
   const inRange = rows.filter((x) => x.i.firstSeenAt >= since && (!member || !x.i.isCanary));
-  // Every competitor we watch is in the menu, even one with nothing in range yet (just added, or quiet).
-  const companies = (await d.select().from(competitor).where(isNull(competitor.archivedAt))).sort((a, b) => a.name.localeCompare(b.name));
   const topicCounts = new Map<string, number>();
   for (const x of base) for (const t of x.topics) topicCounts.set(t, (topicCounts.get(t) ?? 0) + 1);
 
@@ -105,7 +116,16 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
   };
   const groupOf = (dt: Date) => (localDay(dt) === localDay(now) ? "Today" : now.getTime() - dt.getTime() < 7 * 864e5 ? "This week" : "Earlier");
   const cols = teamKey ? "cols-1" : "cols-3";
-  const hasFilters = !!(sp.company || sp.topic || sp.q || level || dateKey !== "30" || sp.all);
+  const companyLink = (ids: number[]) => link(companyParams(new Set(ids), allIds, canaryIds));
+  const shortName = (n: string) => n.replace(/\s*\(.*\)\s*$/, "");
+  const shownList = companies.filter((c) => shown.has(c.id));
+  const hiddenList = companies.filter((c) => !shown.has(c.id));
+  const companyValue = hiddenList.length === 0 ? undefined
+    : shownList.length === 1 ? shortName(shownList[0]!.name)
+    : hiddenList.length === 1 ? `All but ${shortName(hiddenList[0]!.name)}`
+    : hiddenList.length <= 2 ? `All but ${hiddenList.map((c) => shortName(c.name)).join(", ")}`
+    : `${shownList.length} of ${companies.length}`;
+  const hasFilters = !!(!defaultCompanies || sp.topic || sp.q || level || dateKey !== "30" || sp.all);
 
   return (
     <div className="changes">
@@ -140,8 +160,18 @@ export default async function Changes({ searchParams }: { searchParams: Promise<
           {Object.entries(sp).filter(([k, v]) => k !== "q" && v).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
           <input type="search" name="q" defaultValue={sp.q} placeholder="Search title or summary" aria-label="Search" />
         </form>
-        <FilterMenu label="Company" clearParam="company" value={companies.find((c) => String(c.id) === sp.company)?.name}
-          groups={[{ param: "company", options: companies.map((c) => ({ value: String(c.id), label: c.name, domain: c.domain, logoId: c.id, canary: inRange.some((x) => x.c.id === c.id && x.i.isCanary) || /canary/i.test(c.name), count: inRange.filter((x) => x.c.id === c.id).length })) }]} />
+        <FilterMenu label="Company" value={companyValue} clearHref={defaultCompanies ? undefined : companyLink(allIds.filter((id) => !canaryIds.includes(id)))}
+          groups={[{
+            param: "company", multi: true,
+            top: hiddenList.length ? { label: "Show all companies", href: companyLink(allIds) } : undefined,
+            options: companies.map((c) => ({
+              value: String(c.id), label: c.name, domain: c.domain, logoId: c.id, canary: canaryIds.includes(c.id),
+              count: inRange.filter((x) => x.c.id === c.id).length,
+              on: shown.has(c.id),
+              href: companyLink(shown.has(c.id) ? [...shown].filter((id) => id !== c.id) : [...shown, c.id]),
+              only: companyLink([c.id]),
+            })),
+          }]} />
         <FilterMenu label="Date" value={DATES[dateKey]!.label} groups={[{ param: "date", options: Object.entries(DATES).map(([k, v]) => ({ value: k, label: v.label })) }]} />
         <FilterMenu label={sp.topic ? "Topic" : "Filter"} dashed={!sp.topic} clearParam="topic" value={sp.topic}
           groups={[

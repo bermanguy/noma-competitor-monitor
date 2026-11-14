@@ -123,6 +123,14 @@ main.plain { background:#fff; min-height:100vh; }
 .menu-o:hover { background:#f1f5f9; text-decoration:none; } .menu-o.on { background:#ecfbff; }
 .menu-n { margin-left:auto; color:#949cab; font-size:12px; }
 .menu-find { width:100%; margin-bottom:4px; }
+.menu-row { position:relative; display:flex; align-items:center; }
+.menu-row .menu-o { flex:1; min-width:0; }
+.menu-cb { display:grid; place-items:center; flex:none; width:15px; height:15px; border:1.5px solid #c3cad6; border-radius:4px; font-size:10px; line-height:1; color:#fff; }
+.menu-cb.on { background:var(--accent); border-color:var(--accent); }
+.menu-only { display:none; position:absolute; right:8px; padding:1px 7px; border-radius:5px; background:#fff; border:1px solid var(--line); font-size:11.5px; color:var(--muted); }
+.menu-row:hover .menu-only { display:block; } .menu-row:hover .menu-n { visibility:hidden; }
+.menu-only:hover { color:var(--fg); text-decoration:none; }
+.menu-top { color:var(--muted); font-size:13px; }
 .co-logo { display:grid; place-items:center; flex:none; object-fit:contain; background:#fff; box-shadow:inset 0 0 0 1px rgba(0,0,0,.06); }
 .co-logo.tile { color:#fff; font-weight:700; }
 .co-logo.canary { background:#fff7e6; box-shadow:inset 0 0 0 1px #f6e2b8; }
