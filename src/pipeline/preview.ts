@@ -87,7 +87,19 @@ export interface LensTrial {
  * fresh answers, not a fresh answer with an old stored one, keeps the judge's run-to-run variance and
  * any prompt changes since then from showing up as "your edit changed this". Saves nothing.
  */
-export async function tryLens(db: DB, teamKey: string, draftLens: string, limit = 5): Promise<LensTrial[]> {
+/** One change, as the owner sees it pinned above the wording box when they come to fix it from To review. */
+export async function pinnedChange(db: DB, teamKey: string, itemId: number) {
+  const [r] = await db
+    .select({ itemId: item.id, competitor: competitor.name, title: item.title, url: item.url, level: judgment.level })
+    .from(judgment)
+    .innerJoin(item, eq(judgment.itemId, item.id))
+    .innerJoin(competitor, eq(item.competitorId, competitor.id))
+    .where(and(eq(judgment.teamKey, teamKey), eq(item.id, itemId)));
+  return r ? { ...r, title: r.title ?? r.url } : null;
+}
+
+/** Judges the team's latest changes, or just `itemId` when the owner came to fix one post, with the current wording and the draft. */
+export async function tryLens(db: DB, teamKey: string, draftLens: string, limit = 5, itemId?: number): Promise<LensTrial[]> {
   const ctx = await loadContext(db);
   const t = ctx.teams.find((x) => x.key === teamKey);
   if (!t) throw new Error(`no team ${teamKey}`);
@@ -101,7 +113,9 @@ export async function tryLens(db: DB, teamKey: string, draftLens: string, limit 
     .innerJoin(item, eq(judgment.itemId, item.id))
     .innerJoin(competitor, eq(item.competitorId, competitor.id))
     .innerJoin(source, eq(item.sourceId, source.id))
-    .where(and(eq(judgment.teamKey, teamKey), eq(item.status, "judged"), eq(item.isCanary, false), gte(item.firstSeenAt, since), inArray(judgment.level, ["alert", "digest", "log", "none"])))
+    .where(itemId
+      ? and(eq(judgment.teamKey, teamKey), eq(item.id, itemId))
+      : and(eq(judgment.teamKey, teamKey), eq(item.status, "judged"), eq(item.isCanary, false), gte(item.firstSeenAt, since), inArray(judgment.level, ["alert", "digest", "log", "none"])))
     .orderBy(desc(item.firstSeenAt))
     .limit(limit);
 

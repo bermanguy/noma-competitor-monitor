@@ -8,7 +8,7 @@ import { toReview } from "@/eval/owner-golden";
 import { currentViewer } from "@/lib/viewer";
 import { BUILDER, ROLE_HINT, ROLE_NAME, canEditTeam, canManagePeople, type Role } from "@/lib/view-as";
 import { allViewers } from "@/lib/viewer";
-import { previewDigest } from "@/pipeline/preview";
+import { pinnedChange, previewDigest } from "@/pipeline/preview";
 import { SlackMessage } from "@/components/SlackMessage";
 import { TryLens } from "@/components/TryLens";
 import { TeamEditCard } from "@/components/TeamEditCard";
@@ -39,12 +39,12 @@ const LEAD: Record<SettingsSection, string> = {
 };
 const TEXT_KEY: Partial<Record<SettingsSection, OwnerTextKey>> = { company: "company", levels: "levels", pricing: "page.pricing" };
 
-export default async function Settings({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ added?: string; error?: string; team?: string; show?: string }> }) {
+export default async function Settings({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ added?: string; error?: string; team?: string; show?: string; item?: string; fix?: string; fixTeam?: string }> }) {
   const { section: raw } = await params;
   if (!(SETTINGS_SECTIONS as readonly string[]).includes(raw)) notFound();
   const section = raw as SettingsSection;
   const on = (s: SettingsSection) => section === s;
-  const { added, error, team: teamParam, show: showParam } = await searchParams;
+  const { added, error, team: teamParam, show: showParam, item: itemParam, fix: fixParam, fixTeam } = await searchParams;
   const d = db();
   const allComps = await d.select().from(competitor).orderBy(competitor.name);
   const comps = allComps.filter((c) => !c.archivedAt);
@@ -65,6 +65,9 @@ export default async function Settings({ params, searchParams }: { params: Promi
   // The owner previews their own team; the builder picks one.
   const previewTeam = on("preview") ? teams.find((t) => t.key === (viewer.role === "builder" ? teamParam : viewer.team)) ?? teams[0] : undefined;
   const preview = previewTeam ? await previewDigest(d, previewTeam.key) : undefined;
+  // Came here from To review to fix the wording for one post: that post is pinned above the box and tried on its own.
+  const pinned = previewTeam && Number(itemParam) ? await pinnedChange(d, previewTeam.key, Number(itemParam)) : null;
+  const fixTeamRow = on("review") && Number(fixParam) ? teams.find((t) => t.key === fixTeam && canEditTeam(viewer, t.key)) : undefined;
   // An owner's description edit, checked on the golden set before it goes live.
   const editTeamKey = previewTeam?.key ?? (on("teams") ? (viewer.role === "owner" ? viewer.team : undefined) : undefined);
   const edit = editTeamKey ? await editToShow(d, editTeamKey) : null;
@@ -89,6 +92,12 @@ export default async function Settings({ params, searchParams }: { params: Promi
         <div className="notice"><strong>Noma&apos;s site changed.</strong> {pending.length === 1 ? "One suggested update is" : `${pending.length} suggested updates are`} waiting for your approval. <a href="/settings/suggestions">Review</a></div>
       )}
 
+      {fixTeamRow && (
+        <div className="notice fix-next">
+          <div><strong>Want this right next time too?</strong> Edit what {fixTeamRow.name} cares about, and try it on this post before you save.</div>
+          <a className="btn" href={`/settings/preview?team=${fixTeamRow.key}&item=${Number(fixParam)}#fix`}>Edit what {fixTeamRow.name} cares about</a>
+        </div>
+      )}
       {on("review") && (
         <ReviewSetup open={review} done={inExam} teams={teams} show={showParam === "done" ? "done" : "open"} canEdit={(k) => canEditTeam(viewer, k)}
           company={(name) => allComps.find((c) => c.name === name)} />
@@ -253,7 +262,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
             </div>
             <div>
               {canEditTeam(viewer, previewTeam.key)
-                ? <><TryLens teamKey={previewTeam.key} teamName={previewTeam.name} lens={edit && edit.status !== "saved" && edit.status !== "saved_anyway" ? edit.lens : previewTeam.lens} tryAction={tryLensAction} saveAction={updateTeam} checking={edit?.status === "checking"} total={golden.length || undefined} /></>
+                ? <><TryLens teamKey={previewTeam.key} teamName={previewTeam.name} lens={edit && edit.status !== "saved" && edit.status !== "saved_anyway" ? edit.lens : previewTeam.lens} tryAction={tryLensAction} saveAction={updateTeam} pinned={pinned ?? undefined} checking={edit?.status === "checking"} total={golden.length || undefined} /></>
                 : <div className="card muted">Only {previewTeam.name}&apos;s owner can fine-tune it.</div>}
               <div className="card muted" style={{ fontSize: 13 }}>
                 <strong style={{ color: "var(--fg)" }}>What else shapes this message</strong>
