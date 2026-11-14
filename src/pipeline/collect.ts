@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { config } from "../config";
 import type { DB } from "../db/client";
 import { competitor, item, snapshot, source, sourceRun } from "../db/schema";
@@ -19,6 +19,8 @@ export interface CollectStats {
 
 /** Posts published this long before monitoring started are history, not news. */
 const OLD_POST_DAYS = 14;
+/** On the first check, only posts from this recent window are shown as "Before monitoring"; older ones are silent history. */
+const BACKFILL_MAX_DAYS = 30;
 
 /** Collects one source. Never throws: a failure is recorded on the source and the run moves on. */
 export async function collectSource(db: DB, runId: number, s: Source, c: Competitor): Promise<CollectStats> {
@@ -80,6 +82,10 @@ async function collectPosts(db: DB, s: Source, c: Competitor, body: string, fina
   if (s.kind === "feed") entries.sort((a, b) => (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0));
   const fresh = entries.filter((e) => !existing.has(`post:${e.url}`));
   const firstCrawl = !s.baselinedAt;
+  // The first-check backfill is shared by all of a competitor's blog and news pages, so a company with
+  // four listings shows its latest few posts, not twelve. Counted again before each post, since sources run side by side.
+  const backfillUsed = async () =>
+    (await db.select({ n: count() }).from(item).where(and(eq(item.competitorId, c.id), eq(item.isBackfill, true))))[0]?.n ?? 0;
   let newItems = 0;
 
   for (const [i, e] of fresh.entries()) {
@@ -89,7 +95,7 @@ async function collectPosts(db: DB, s: Source, c: Competitor, body: string, fina
     };
     const old = e.publishedAt && s.baselinedAt && e.publishedAt.getTime() < s.baselinedAt.getTime() - OLD_POST_DAYS * 864e5;
     // First check: the latest few posts are judged and labelled; everything older is silent history.
-    const backfill = firstCrawl && i < config.backfillPosts;
+    const backfill = firstCrawl && i < config.backfillPosts && (await backfillUsed()) < config.backfillPosts;
     if ((firstCrawl && !backfill) || old || i >= config.maxPostsPerSourcePerRun) {
       await db.insert(item).values({
         ...base, text: "", status: "baseline",
@@ -104,10 +110,21 @@ async function collectPosts(db: DB, s: Source, c: Competitor, body: string, fina
       continue; // a normal new post is retried next run, since no item row was written
     }
     const ex = extractMain(page.body, page.url);
+    const published = e.publishedAt ?? ex.publishedAt;
+    const since = s.baselinedAt ?? new Date();
+    // A listing gives no dates, so the article's own date decides: an old post is history, not news.
+    const tooOld = published && published.getTime() < since.getTime() - (backfill ? BACKFILL_MAX_DAYS : OLD_POST_DAYS) * 864e5;
+    if (tooOld) {
+      await db.insert(item).values({
+        ...base, publishedAt: published, text: "", status: "baseline",
+        statusDetail: backfill ? "present when monitoring started" : "published before monitoring started",
+      }).onConflictDoNothing();
+      continue;
+    }
     const inserted = await db.insert(item).values({
       // A listing link's text often runs the author, title, teaser and tags together, or is just "Read".
       // The post's own title is cleaner; a feed's title is already clean.
-      ...base, title: (s.kind === "feed" ? e.title ?? ex.title : ex.title ?? e.title), publishedAt: e.publishedAt ?? ex.publishedAt,
+      ...base, title: (s.kind === "feed" ? e.title ?? ex.title : ex.title ?? e.title), publishedAt: published,
       text: ex.text, status: "pending", isBackfill: backfill,
       statusDetail: backfill ? "published before monitoring started" : null,
     }).onConflictDoNothing().returning({ id: item.id });

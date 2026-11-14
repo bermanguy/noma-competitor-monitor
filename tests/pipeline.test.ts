@@ -145,6 +145,27 @@ describe("pipeline", () => {
     expect(JSON.stringify(posted[0]!.payload)).toContain("published before monitoring started");
   });
 
+  it("shares the first-check backfill across a competitor's listings and skips old articles", async () => {
+    const [c] = await db.select().from(competitor);
+    await db.insert(source).values({ competitorId: c!.id, kind: "listing", url: "https://acme.test/news", label: "News", linkPrefix: "/news" });
+    const dated = (s: string, iso: string) => post(s).replace("<html>", `<html><head><meta property="article:published_time" content="${iso}"></head>`);
+    const recent = new Date(Date.now() - 3 * 864e5).toISOString();
+    web.set("https://acme.test/blog", listing(["b1", "b2", "b3", "b4"]));
+    web.set("https://acme.test/blog/b1", dated("b1", "2024-01-10T00:00:00Z"));
+    for (const s of ["b2", "b3", "b4"]) web.set(`https://acme.test/blog/${s}`, dated(s, recent));
+    web.set("https://acme.test/news", `<html><body>${["n1", "n2", "n3"].map((s) => `<a href="/news/${s}">${s}</a>`).join("")}</body></html>`);
+    for (const s of ["n1", "n2", "n3"]) web.set(`https://acme.test/news/${s}`, dated(s, recent));
+    web.set("https://acme.test/", home("Tagline"));
+    judgeReply.mockResolvedValue(judgment_("digest", "inspects every tool call at runtime"));
+    await runPipeline(db, "test");
+    const posts = await db.select().from(item).where(eq(item.kind, "post"));
+    expect(posts.filter((i) => i.isBackfill)).toHaveLength(3);
+    const b1 = posts.find((i) => i.url.endsWith("/blog/b1"));
+    expect(b1?.status).toBe("baseline");
+    expect(b1?.isBackfill).toBe(false);
+    expect(posts.filter((i) => i.status === "baseline")).toHaveLength(posts.length - 3);
+  });
+
   it("holds back a judgment whose evidence is not in the source", async () => {
     web.set("https://acme.test/blog", listing(["a"]));
     web.set("https://acme.test/", home("Tagline"));
