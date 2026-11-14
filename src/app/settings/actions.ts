@@ -200,6 +200,17 @@ export async function addToExamAction(form: FormData) {
   for (const [k, v] of form.entries()) {
     if (k.startsWith("level:") && (LEVELS as readonly string[]).includes(String(v))) expected[k.slice(6)] = v as Level;
   }
+  // A post already in the golden files: set the answer for each team this person owns, on that item.
+  const goldenId = String(form.get("goldenId") ?? "");
+  if (goldenId) {
+    const viewer = await currentViewer();
+    const mine = Object.entries(expected).filter(([k]) => canEditTeam(viewer, k));
+    for (const [k, level] of mine) await setGoldenAnswer(db(), goldenId, k, level, viewer.name);
+    revalidatePath("/settings", "layout");
+    redirect("/settings/review?" + (mine.length
+      ? "added=" + encodeURIComponent(`Saved. This post was already in the golden set, so ${mine.length === 1 ? "that team's answer" : "the answers"} now read${mine.length === 1 ? "s" : ""} as you set ${mine.length === 1 ? "it" : "them"}, from the next eval run on.`)
+      : "error=" + encodeURIComponent("You can only answer for your own team")));
+  }
   const g = await addToExam(db(), itemId, expected, String(form.get("note") ?? ""));
   revalidatePath("/settings", "layout");
   redirect("/settings/review?" + (g

@@ -90,7 +90,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
       )}
 
       {on("review") && (
-        <ReviewSetup open={review} done={inExam} teams={teams} show={showParam === "done" ? "done" : "open"}
+        <ReviewSetup open={review} done={inExam} teams={teams} show={showParam === "done" ? "done" : "open"} canEdit={(k) => canEditTeam(viewer, k)}
           company={(name) => allComps.find((c) => c.name === name)} />
       )}
 
