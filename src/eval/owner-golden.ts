@@ -24,6 +24,11 @@ export interface ReviewItem {
   votes: ReviewVote[];
   /** From the canary test page: reviewable, so the loop can be shown end to end, and labelled as a test. */
   isTest: boolean;
+  /**
+   * Set when the post is already in the hand-labelled golden files. The owner's answer then corrects that
+   * item's answer for their team (golden_answer), instead of adding a second copy of the post.
+   */
+  goldenId?: string;
 }
 
 /** Items a team marked not useful in the last two weeks that are not in the exam yet. Most recent vote first. */
@@ -39,11 +44,18 @@ export async function toReview(db: DB, now = new Date()): Promise<ReviewItem[]> 
     .orderBy(desc(feedback.createdAt));
   if (!rows.length) return [];
   const inExam = new Set((await db.select({ id: goldenItem.fromItemId }).from(goldenItem)).map((r) => r.id));
-  const fileUrls = new Set(loadGolden().map((g) => g.url));
+  const fileIds = new Map(loadGolden().map((g) => [g.url, g.id]));
+  // A vote on a post that is already in the golden files is open until that team's answer is set after the vote.
+  const answeredAt = new Map((await db.select().from(goldenAnswer)).map((a) => [`${a.goldenId}|${a.teamKey}`, a.setAt]));
   const byItem = new Map<number, ReviewItem>();
   for (const { f, j, i, c } of rows) {
-    if (inExam.has(i.id) || fileUrls.has(i.url)) continue;
-    const r = byItem.get(i.id) ?? { itemId: i.id, competitor: c.name, title: i.title ?? i.url, url: i.url, levels: {}, votes: [], isTest: i.isCanary };
+    if (inExam.has(i.id)) continue;
+    const goldenId = fileIds.get(i.url);
+    if (goldenId) {
+      const at = answeredAt.get(`${goldenId}|${j.teamKey}`);
+      if (at && at >= f.createdAt) continue;
+    }
+    const r = byItem.get(i.id) ?? { itemId: i.id, competitor: c.name, title: i.title ?? i.url, url: i.url, levels: {}, votes: [], isTest: i.isCanary, ...(goldenId ? { goldenId } : {}) };
     r.votes.push({ team: j.teamKey, level: j.level, why: j.why, reason: f.reason, at: f.createdAt });
     byItem.set(i.id, r);
   }

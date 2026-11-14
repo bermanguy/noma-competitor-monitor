@@ -14,7 +14,7 @@ type Company = { id?: number; name: string; domain: string };
  * Setup › To review: the open votes on top, and what was already answered on its own tab, so a handled
  * item never sits between open ones.
  */
-export function ReviewSetup({ open, done, teams, show, company }: { open: ReviewItem[]; done: Done[]; teams: Team[]; show: "open" | "done"; company: (name: string) => Company | undefined }) {
+export function ReviewSetup({ open, done, teams, show, company, canEdit }: { open: ReviewItem[]; done: Done[]; teams: Team[]; show: "open" | "done"; company: (name: string) => Company | undefined; canEdit: (teamKey: string) => boolean }) {
   const now = new Date();
   const teamName = (k: string) => teams.find((t) => t.key === k)?.name ?? k;
   const Logo = ({ name, test }: { name: string; test?: boolean }) => {
@@ -43,6 +43,7 @@ export function ReviewSetup({ open, done, teams, show, company }: { open: Review
         return (
           <form key={r.itemId} action={addToExamAction} className="rv-card">
             <input type="hidden" name="itemId" value={r.itemId} />
+            {r.goldenId && <input type="hidden" name="goldenId" value={r.goldenId} />}
             <header className="rv-hd">
               <Logo name={r.competitor} test={r.isTest} />
               <div className="rv-id">
@@ -63,16 +64,18 @@ export function ReviewSetup({ open, done, teams, show, company }: { open: Review
             </div>
 
             <div className="rv-answer">
-              <div className="rv-answer-h">What should each team have got?</div>
-              {teams.map((t) => (
+              <div className="rv-answer-h">{r.goldenId ? "This post is already in the golden set. What should your team have got?" : "What should each team have got?"}</div>
+              {teams.filter((t) => !r.goldenId || canEdit(t.key)).map((t) => (
                 <div key={t.key} className={`rv-team${voted.has(t.key) ? " voted" : ""}`}>
                   <span className="rv-tn">{t.name}{voted.has(t.key) && <span className="rv-tag">voted</span>}</span>
                   <LevelPicker teamKey={t.key} value={(r.levels[t.key] ?? "none") as Level} />
                 </div>
               ))}
               <div className="rv-submit">
-                <input type="text" name="note" placeholder="Why these levels (optional, kept with the test case)" aria-label="Why these levels" />
-                <button>Add to the golden set</button>
+                {r.goldenId
+                  ? <span className="muted" style={{ flex: 1, alignSelf: "center" }}>Your answer replaces the one in the golden set, so every later eval run checks the judge against it.</span>
+                  : <input type="text" name="note" placeholder="Why these levels (optional, kept with the test case)" aria-label="Why these levels" />}
+                <button>{r.goldenId ? "Save the answer" : "Add to the golden set"}</button>
               </div>
             </div>
           </form>
