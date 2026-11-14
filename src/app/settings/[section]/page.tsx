@@ -94,8 +94,8 @@ export default async function Settings({ params, searchParams }: { params: Promi
 
       {fixTeamRow && (
         <div className="notice fix-next">
-          <div><strong>Want this right next time too?</strong> Fix {fixTeamRow.name}&apos;s wording, and try it on this post before you save.</div>
-          <a className="btn" href={`/settings/preview?team=${fixTeamRow.key}&item=${Number(fixParam)}#fix`}>Fix {fixTeamRow.name}&apos;s wording for this</a>
+          <div><strong>Want this right next time too?</strong> Edit what {fixTeamRow.name} cares about, and try it on this post before you save.</div>
+          <a className="btn" href={`/settings/preview?team=${fixTeamRow.key}&item=${Number(fixParam)}#fix`}>Edit what {fixTeamRow.name} cares about</a>
         </div>
       )}
       {on("review") && (
