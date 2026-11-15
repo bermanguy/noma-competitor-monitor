@@ -1,6 +1,6 @@
 # Design doc: Competitor Monitor
 
-Short version of the system for reviewers. Deeper detail lives in [architecture.md](architecture.md) and the [decision records](decisions/) (cited as 0001 to 0014).
+Short version of the system for reviewers. Deeper detail lives in [architecture.md](architecture.md) and the [decision records](decisions/) (cited as 0001 to 0019).
 
 ## 1. The problem and the answer
 
@@ -41,6 +41,8 @@ Every stage writes its result before the next one reads it. Any stage can crash 
 **Same story.** The judge also sees the competitor's last 21 days of items. A press release about research already posted is linked to it, and a team that already heard the story gets FYI unless something new matters to it (0008).
 
 **Owner-owned meaning.** What Noma sells, the team descriptions, the level definitions and the topics are plain-English text the owner edits in Settings. They're inserted into the prompt (0007). The fixed scaffold (rules about evidence, tense, untrusted input) is the builder's.
+
+**Claude connector.** An MCP endpoint in the web app lets people ask Claude about competitors with the same judged items and quotes; it is read-only except an owner-only "add competitor" that previews first and writes only on confirmation (0019).
 
 **Pricing pages** have their own reader: a model reads plans and prices, code verifies every price is on the page, and code compares plan by plan. "$79" becoming "$89" is caught even though it's a tiny text change (0005).
 
@@ -99,7 +101,7 @@ Runs unattended every 3 hours. Retries with backoff; one source failing never st
 
 **This is an MVP, and the rollout is part of the design** ([0015](decisions/0015-mvp-rollout-with-owners-first.md)). It goes first to the area owners and a few business users per team. For the first weeks the goal is validation, not reach: are the updates accurate, is each team getting the right level, and what's missing? Every vote can become a golden-set item (section 5), so we tune accuracy with them before widening the audience. Only then do we add sources.
 
-Left out on purpose (frozen in [scope.md](scope.md)): social media, press wires, review sites, job posts, SSO and roles beyond a shared password, email and Teams, automatic prompt tuning, AWS Marketplace prices (0013).
+Left out on purpose (frozen in [scope.md](scope.md)): social media, press wires, review sites, job posts, company SSO (sign-in is a shared password and "View as"; the three roles behind it are enforced on the server, 0018), email and Teams, automatic prompt tuning, AWS Marketplace prices (0013).
 
 Next, in order:
 

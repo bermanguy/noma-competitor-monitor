@@ -57,3 +57,14 @@ describe("looksBlocked", () => {
     expect(looksBlocked(200, "<p>normal page</p>")).toBeNull();
   });
 });
+
+describe("looksLikeCardText", () => {
+  it("spots a listing card's glued text and leaves real titles alone", async () => {
+    const { looksLikeCardText } = await import("../src/pipeline/repair-titles");
+    expect(looksLikeCardText("BlogNovember 9, 2026Runtime Security for AI Applications and AI Agents: Straiker’s Detection Results")).toBe(true);
+    expect(looksLikeCardText("BlogOctober 13, 2026Straiker Named in Two 2026 Gartner® Hype Cycle™ Reports")).toBe(true);
+    expect(looksLikeCardText("Straiker EU & India Expansion | Regional AWS Hosting")).toBe(false);
+    expect(looksLikeCardText("Blogging about November launches")).toBe(false);
+    expect(looksLikeCardText(null)).toBe(false);
+  });
+});
