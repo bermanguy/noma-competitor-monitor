@@ -1,127 +1,90 @@
 # Design doc: Competitor Monitor
 
-Short version of the system for reviewers. Deeper detail lives in [architecture.md](architecture.md) and the [decision records](decisions/) (cited as 0001 to 0019).
+The two-to-three-page version. The [full design doc](design-full.md), the [architecture reference](architecture.md) and the [decision records](decisions/) (0001 to 0019) have the detail.
 
-## 1. The problem and the answer
+## 1. Architecture
 
-Three teams care about competitors for different reasons. Marketing wants launches and messaging, Product wants capability and roadmap moves, and R&D wants technical depth. A shared feed fails all three: it is either too noisy or too thin. So the system **judges every change once per team**, and each team gets only what clears its own bar, with a one-line reason and a verbatim quote as proof.
+Three teams want different things from the same competitor news, so the system **judges every change once per team**. Each team gets only what clears its own bar, with a one-line reason and a verbatim quote as proof.
 
-## 2. Architecture and responsibilities
-
-One TypeScript codebase, deployed twice on Render, sharing one Postgres database.
+One TypeScript codebase is deployed twice on Render: a **web app** and a **cron worker** every 3 hours. Both share one Postgres database.
 
 ```mermaid
 flowchart LR
-  CRON[Render cron<br/>every 3 h] --> W[Pipeline worker]
-  W -->|fetch| SITES[(Competitor sites<br/>+ canary page)]
+  CRON[Render cron, every 3 h] --> W[Pipeline worker]
+  W -->|fetch| SITES[(Competitor sites + canary)]
   W -->|judge| CLAUDE[Claude API]
-  W -->|post| SLACK[Slack: team, owner, ops channels]
+  W -->|post| SLACK[Slack: team, owner, ops]
   W <--> DB[(Postgres)]
-  WEB[Web app, Next.js] <--> DB
-  OWNER((Owner)) --> WEB
-  BUILDER((Builder)) --> WEB
+  WEB[Web app] <--> DB
   SLACK -->|rating link| WEB
 ```
 
 | Stage | Responsibility | Fails safely because |
 | --- | --- | --- |
-| Fetch | HTTP with timeout and retry; headless browser only for flagged sources | One source failing never stops the run; 403s and bot pages are failures, never "changes" |
-| Extract | Main text via Readability; article links from listing pages | Fixed settings per source, so extraction can't invent diffs |
-| Detect | New post = URL never seen. Page change = normalised text changed by more than a minimum size | First crawl is a silent baseline (except the latest 3 posts, 0006) |
-| Gate | Small model: "meaningful or cosmetic?" for page changes, quoting the changed words | Cosmetic changes are logged and visible, just not sent |
-| Judge | One call per team per item returns a level, a reason, quotes and topics; each call sees only that team's description (0017) | Structured output, validated before storing; budget cap per run and per month |
-| Evidence check | Every quote must appear word for word in the source | A bad quote gets one retry; still bad means held back, never sent (0009) |
-| Route and notify | Applies each team's noise setting; posts alerts now, digests each morning | Every delivery has a unique key, so a re-run never double-posts |
-| Health | Flags failing, empty or unusually quiet sources; posts to the ops channel | An outside heartbeat alerts if runs stop entirely |
+| Fetch | HTTP with timeout and retry, plus a headless browser for flagged sources | One failing source never stops the run, and a 403 or a bot page is a failure, never a "change" |
+| Detect | A new post is a URL never seen before. A page change is normalised text that changed by more than a minimum size | The first crawl is a silent baseline |
+| Gate | A small model decides whether a page change is meaningful or cosmetic | Cosmetic changes are logged, not sent |
+| Judge | One call per team per item returns a level, a reason, quotes and topics (0017) | Output is validated, and there's a budget cap per run and per month |
+| Evidence check | Every quote must appear word for word in the source | A bad quote gets one retry, then the item is held back (0009) |
+| Deliver | Urgent alerts go out now and Worth knowing in the morning digest | A unique key per delivery means a re-run never double-posts |
+| Health | Flags sources that fail, go empty or go quiet, and a heartbeat catches missed runs | Every stage writes before the next one reads, so a crash is picked up by the next run |
 
-Every stage writes its result before the next one reads it. Any stage can crash and be re-run without redoing or double-sending the others.
+There are **four named levels, not a score**: Urgent, Worth knowing, FYI and none. Models squeeze numeric scores toward the middle, while named levels with written definitions hold (0014). The judge also sees the competitor's last 21 days, so a press release about research already covered is linked as the **same story** and doesn't alert twice (0008). **Pricing pages** have their own reader: plans and prices are extracted, every price is verified on the page, and the plans are compared field by field (0005).
 
-**Four levels, not a score** (confirmed by the owner). Urgent (act today, sent now), Worth knowing (in the morning digest), FYI (logged, visible on the web) and none. Named levels with written anchors beat a 1 to 10 score, because models squeeze numeric scores toward the middle (0014 renamed them for people; the code says alert, digest, log).
+There are **two surfaces, for two audiences.** The business owner uses the web app's Changes and Setup pages to add a competitor by typing its domain, edit topics and team descriptions in plain English, and set each team's noise level (0007, 0016). The builder uses a separate Builder area for sources, runs, cost, evals and feedback. Teams live in Slack. Three roles (Builder, Owner, Member) are enforced on the server. Sign-in is a shared password plus "View as" until company SSO (0018). A **Claude connector** (MCP) lets people ask Claude about the same judged items, read-only except an owner-only "add competitor" that previews before it writes (0019).
 
-**Same story.** The judge also sees the competitor's last 21 days of items. A press release about research already posted is linked to it, and a team that already heard the story gets FYI unless something new matters to it (0008).
+## 2. Technology choices
 
-**Owner-owned meaning.** What Noma sells, the team descriptions, the level definitions and the topics are plain-English text the owner edits in Settings. They're inserted into the prompt (0007). The fixed scaffold (rules about evidence, tense, untrusted input) is the builder's.
-
-**Claude connector.** An MCP endpoint in the web app lets people ask Claude about competitors with the same judged items and quotes; it is read-only except an owner-only "add competitor" that previews first and writes only on confirmation (0019).
-
-**Pricing pages** have their own reader: a model reads plans and prices, code verifies every price is on the page, and code compares plan by plan. "$79" becoming "$89" is caught even though it's a tiny text change (0005).
-
-## 3. Technology choices
-
-| Choice | Picked | Considered and rejected | Why |
+| Choice | Picked | Rejected | Why |
 | --- | --- | --- | --- |
-| Language | TypeScript, Next.js, Drizzle | Python (FastAPI, trafilatura) | One language end to end the owner can defend; Playwright, Readability and the Anthropic SDK are first-class in Node (0002) |
-| Hosting | Render web service + cron + Postgres | Vercel functions + external cron; Neon | Headless browsers and long runs don't fit function time limits; one provider, one bill |
-| UI | Plain Next.js pages | Base44 no-code | Keeps configuration in the repo and the system in one piece |
-| Delivery | Slack, one channel per team | Email, Teams, Slack interactive buttons | Teams already live in Slack; a signed rating link works without a Slack app review (0003) |
-| Detection | Code: URL set difference, text diff | A model for detection | Exact operations; a model would only add error |
-| Models | Opus 5.5 judges, Haiku 5.5 gates, Sonnet 5.5 reads pricing | One model everywhere | Judgment is the product and runs 10 to 20 times a day (about $1); the gate is high-volume and binary. Each model is a setting, so the evals decide, not opinion |
-| Scraping | Own fetcher, browser fallback | Firecrawl, Visualping | Four competitors don't need it; a managed scraper is the first thing to add at scale |
+| Language | TypeScript, Next.js, Drizzle | Python (FastAPI, trafilatura) | One language end to end, with first-class Playwright, Readability and the Anthropic SDK (0002) |
+| Hosting | Render web + cron + Postgres | Vercel functions + external cron, Neon | Headless browsers and long runs don't fit function time limits. One provider, one bill |
+| UI | Plain Next.js pages | Base44 no-code | Keeps configuration and the system in one repo |
+| Delivery | Slack, one channel per team | Email, Teams, Slack interactive buttons | Teams already live in Slack, and a signed rating link needs no Slack app review (0003) |
+| Detection | Code (URL set difference, text diff) | A model | These are exact operations, and a model would only add error |
+| Models | Opus judges, Haiku gates, Sonnet reads pricing | One model everywhere | Judgment is the product (about $1 a day). Each model is a setting, so the evals decide |
+| Scraping | Own fetcher, browser fallback | Firecrawl, Visualping | Four competitors don't need it. It's the first thing to add at scale |
 
-**Under other constraints:** with a Python team, trafilatura and FastAPI. With hundreds of competitors, a job queue and a managed scraper (section 4). With a strict cost cap, Sonnet as the judge, which the evals can test in one run.
+**Under other constraints:** with a Python team I'd use trafilatura and FastAPI. With hundreds of competitors, a job queue and a managed scraper. With a strict cost cap, Sonnet as the judge, which the evals can test in one run.
 
-## 4. How it grows
+## 3. How it grows
 
-| Growth | What holds | What changes first |
-| --- | --- | --- |
-| 4 to 50 competitors | Same design; a run is minutes of I/O. Adding one is a domain typed in Settings | Fetch concurrency per domain; more frequent runs |
-| 50 to 500 competitors | Stage-per-table design, idempotent keys | One cron process becomes a queue with workers; managed scraper for hard sites |
-| More topics | Topics are owner text; the judge tags any that fit | Prompt size, then topic groups |
-| More teams (consumers) | Each team is a lens, a channel and a noise setting, judged in its own call; the item text is cached, so a team adds little cost | Cost grows with teams × items; batch the calls at volume |
-| More volume per team | Levels, a daily Urgent cap, same-story linking | Cross-source duplicate clustering with embeddings |
+- **Competitors (4 to 50):** the same design works, and adding one is a domain typed in Setup. The first change is fetch concurrency per domain.
+- **Competitors (50 to 500):** the cron process becomes a queue with workers, plus a managed scraper for hard sites. The stage-per-table design and idempotent keys carry over unchanged.
+- **Topics:** topics are owner text, so prompt size is the limit, and then topic groups.
+- **Teams (consumers):** each team is a description, a channel and a noise setting, judged in its own call. The item text is cached, so a team adds little cost. Cost grows with teams × items, so calls get batched at volume.
+- **Volume per team:** named levels, a daily Urgent cap and same-story linking hold first. After that comes cross-source clustering with embeddings.
 
-## 5. How we know it's useful, and how it improves
+## 4. How we know the output is useful, and how it improves
 
-**Before a change ships: evals on a golden set.** A hand-labelled answer key of real and authored items (31 files plus items the owner adds from votes) says what level each team should get. `npm run eval`, or "Run the evals" in Builder › Evals, grades the live prompts per team: precision (of what we send, how much the team wanted), recall (of what they wanted, how much we sent), severe misses (a missed Urgent, or an Urgent on noise), evidence failures, same-story links and topic tags. It also shows **how each team's digest would look**, so a prompt change is judged by what people would actually read. A saved baseline is the bar to beat, and the page says in one line whether the latest run is better or worse and which answers moved.
+**Before a change ships: evals on a golden set.** A hand-labelled answer key (31 real and authored items, plus items owners add from votes) says what level each team should get. `npm run eval`, or Builder › Evals, reports per-team precision and recall, severe misses (a missed Urgent, or an Urgent on noise), evidence failures and same-story links. It also shows each team's would-be digest. A saved baseline is the bar to beat. Calibration took four rounds and ended at Product 91/77, Marketing 79/100 and R&D 100/100 (precision/recall), with no severe misses ([notes](process/calibration-2026-11-12.md)).
 
-Calibration took four rounds ([calibration notes](process/calibration-2026-11-12.md)):
+**After it ships: feedback becomes test questions.** Every alert has 👍/👎 and every digest has a rating link. In To review, the owner sees each "not useful" vote, picks the right level and adds it to the golden set with one click, so the live system's mistakes become tomorrow's evals (0011).
 
-| Round | Change | Product P/R | Marketing P/R | R&D P/R | Severe misses |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Starting descriptions | 59 / 100 | 78 / 95 | 93 / 100 | 0 |
-| 2 | Strict Product wording | 100 / 69 | 82 / 95 | 93 / 100 | 1 |
-| 3 | Middle-ground wording | 83 / 77 | 82 / 95 | 87 / 100 | 1 |
-| 4 | Quote retry, answer key fixed | 91 / 77 | 79 / 100 | 100 / 100 | 0 |
+**Owners tune without the builder.** A new team description is not live until the evals re-judge that team with the draft and compare it to the baseline. If nothing got worse, it goes live by itself. If something did, the owner sees which posts moved and decides. A weekly scheduled eval catches drift from model changes.
 
-When a score drops, we find the cause before changing anything: a wrong answer key, a vague team description, missing company context, a judge rule broken, or bad input. Each cause has a different owner and fix.
+**Honest limit:** the first answer key is our judgment of what the teams want, and real votes replace it within weeks.
 
-**After it ships: team feedback.** Every alert has 👍/👎 and every digest has one rating link. A vote pings the right owner in the owners' channel (0011). In Settings, the owner sees every "not useful" vote, picks the level each team should have got, and **adds it to the golden set** with one click. The live system's mistakes become tomorrow's test questions, so quality can only ratchet up.
+## 5. Left out, and what's next
 
-**Owners tune without the Builder.** When an owner saves a new team description, it is not live yet: the evals re-judge that team's answers with the draft in the background (about 2 minutes) and compare them with the saved baseline. Each team is judged in its own call, so the edit cannot move another team's answers; those are carried over unchanged. If nothing got worse, it goes live by itself and becomes the new baseline. If something did, the owner sees the exact test posts per team and chooses: narrow the wording, update their own team's answer key, or save anyway, which notes it in the ops channel. To allow for the judge's natural variance (about 1 answer in 30 moves a level between runs, and current models no longer accept a temperature setting), the edit is held only when two or more answers get worse, or on any new severe miss. A weekly scheduled eval run catches drift from model changes and posts to ops if a team regressed.
+This is an MVP. It goes first to the area owners and a few business users per team, to validate accuracy with their votes before widening (0015). **Left out on purpose** ([scope](scope.md)): social media, press wires, review sites, job posts, company SSO, email and Teams, automatic prompt tuning, and AWS Marketplace prices (0013).
 
-**Honest limit:** the first answer key is our judgment of what the teams want. Real votes replace it within weeks, and the design makes that the default path.
+**Next, in order:**
+1. Validate with the owners, then widen to the full teams.
+2. More sources, R&D first: changelogs, docs, GitHub and research blogs.
+3. Each area head owns their team's column in the answer key.
+4. Sonnet as the judge if the evals hold, at about half the cost.
+5. A queue and workers past about 50 competitors.
+6. Grafana for monitoring history and on-call.
 
-## 6. Production readiness
-
-Runs unattended every 3 hours. Retries with backoff; one source failing never stops the run; idempotent deliveries; per-run and per-month cost caps checked before each call; silent-breakage checks (quiet longer than usual, content shrank); an external heartbeat for missed runs; three Slack audiences so nobody filters someone else's noise (teams get news, the owner gets decisions, ops gets breakages). Fetched text is treated as untrusted data, never instructions; outbound fetches refuse private network addresses; secrets live only in Render environment variables. A canary page we control proves the whole path end to end on demand.
-
-**Monitoring.** Builder › Overview shows eight numbers, each with a target and the table it is computed from: runs on schedule (≥ 95% of 3-hour slots), clean runs (≥ 90%), healthy sources (≥ 90%), Slack delivery (≥ 99%), evals precision for the weakest team (≥ 85%), quotes verified (≥ 95%), rated useful (≥ 60% 👍) and model spend (< 80% of the monthly cap). Under them is the alert-rule table, in the shape Grafana alert rules and Datadog monitors share: condition, evaluation, pending period, severity, channel. Seven rules are active today (missed run via healthchecks.io; crash, failing or quiet or shrinking source, failed Slack post and budget cap from the pipeline, all to `#competitors-ops`). Five are drafts for the AI-quality and cost numbers; the "New rule" form previews editing and is not wired yet.
-
-## 7. Rollout, what was left out, and what's next
-
-**This is an MVP, and the rollout is part of the design** ([0015](decisions/0015-mvp-rollout-with-owners-first.md)). It goes first to the area owners and a few business users per team. For the first weeks the goal is validation, not reach: are the updates accurate, is each team getting the right level, and what's missing? Every vote can become a golden-set item (section 5), so we tune accuracy with them before widening the audience. Only then do we add sources.
-
-Left out on purpose (frozen in [scope.md](scope.md)): social media, press wires, review sites, job posts, company SSO (sign-in is a shared password and "View as"; the three roles behind it are enforced on the server, 0018), email and Teams, automatic prompt tuning, AWS Marketplace prices (0013).
-
-Next, in order:
-
-1. **Validate with the owners and a few business users** (above), then widen to the full teams.
-2. **More sources, R&D first:** release notes, changelogs, docs and technical channels such as GitHub and research blogs, which carry the depth R&D wants and blog posts often lack. New page types follow the pricing reader's shape: read, verify, compare.
-3. **Competitor briefing podcast.** The owner picks a period, topics and competitors and gets a two-voice debate summary, posted as a link in Slack and a podcast feed. It's built from items already judged and quoted, so it inherits the evidence.
-4. **Each area head labels their own team's answers** in the golden set, instead of the product owner standing in.
-5. **Sonnet as the judge**, if the evals show per-team precision holds, at about half the cost.
-6. **Queue and workers**, when competitors pass about 50.
-7. **Grafana Cloud for monitoring history and on-call.** Point a read-only Postgres user at the same queries the Overview uses, move the alert rules into Grafana alerting and route criticals to on-call. Left out for now: it means opening the database to outside access, about half a day, and the in-app page tells the same story.
-
-## 8. Risks
+## 6. Risks
 
 | Risk | Mitigation |
 | --- | --- |
-| Silent breakage: a site redesign makes a source return nothing | Per-source baselines for volume and text length; "quiet longer than usual" alerts; Healthy / Needs attention badge |
-| Noise erodes trust and teams mute the channel | Per-team noise setting, a daily Urgent cap (overflow goes to the digest), same-story linking, the evals' precision bar, and votes that become golden-set items |
-| The judge invents or overstates | Quotes checked word for word; held back if still wrong; prompt rules on tense and certainty ("plans to" is not "launched") |
-| Prompt injection from a competitor page | Page text is delimited data; the model never picks URLs, recipients or actions |
-| Bot blocking or legal pushback on scraping | Polite rate, public pages only, browser only where needed; a managed scraper is the fallback |
-| Model or prompt change quietly lowers quality | Evals against the saved baseline before shipping |
-| Cost runaway | Budget caps in code, checked before every call; spend shown in the Builder area |
-| Answer key reflects one person's taste | Area heads own their team's column; live votes keep correcting it |
+| Silent breakage: a redesign makes a source return nothing | Per-source volume and length baselines, "quiet longer than usual" alerts to the ops channel, and a heartbeat for missed runs |
+| Noise erodes trust and teams mute the channel | Per-team noise setting, daily Urgent cap, same-story linking, a precision bar in the evals, and votes that become test items |
+| The judge invents or overstates | Quotes are checked word for word and held back if wrong. Prompt rules cover tense and certainty ("plans to" is not "launched") |
+| Prompt injection from a competitor page | Page text is delimited as data, and the model never picks URLs, recipients or actions |
+| Bot blocking or legal pushback | Polite rate, public pages only, a browser only where needed, and a managed scraper as the fallback |
+| A model or prompt change lowers quality | Evals against the saved baseline before shipping, plus the weekly drift check |
+| Cost runaway | Budget caps checked before every call, with spend shown in the Builder area |

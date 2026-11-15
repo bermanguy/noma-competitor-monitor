@@ -37,7 +37,7 @@ npm run eval                         # evals on the golden set: per-team precisi
 
 ## Read next
 
-- [Design doc](docs/design.md): architecture, choices, scale, quality, risks
+- [Design doc](docs/design.md) (2 to 3 pages): architecture, choices, scale, quality, risks. The [full version](docs/design-full.md) has more detail
 - [Decisions](docs/decisions/): one short record per choice (0001 to 0019)
 - [Scope](docs/scope.md)
 
