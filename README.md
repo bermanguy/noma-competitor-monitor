@@ -6,6 +6,10 @@ Watches competitors' blogs and key pages, judges every new post or quiet page ch
 
 **Live:** https://competitor-monitor-kqys.onrender.com (runs every 3 hours on its own)
 
+## Demo video
+
+**[Watch the demo on Google Drive](https://drive.google.com/file/d/1MQBp4jY40VQ0UZSmNSlSf9IpER-Nef8J/view?usp=sharing)**: what was built and why, the decisions that mattered, what was left out, and a live demo of an owner configuring it. It's too large for git, so it's linked rather than committed.
+
 ## Who uses what
 
 | Who | Where | What they do |
@@ -20,7 +24,7 @@ There is no sign-in per person yet. Anyone with the link picks who they are from
 
 ## Run it locally
 
-Needs Node 22 and a Postgres URL. Copy the variables listed in [docs/operations/setup.md](docs/operations/setup.md) into `.env`.
+Needs Node 22 and a Postgres URL. Copy [`.env.example`](.env.example) to `.env.local` and fill it in; [docs/operations/setup.md](docs/operations/setup.md) says where each value comes from.
 
 ```bash
 npm install
@@ -34,7 +38,7 @@ npm run eval                         # evals on the golden set: per-team precisi
 ## Read next
 
 - [Design doc](docs/design.md): architecture, choices, scale, quality, risks
-- [Decisions](docs/decisions/): one short record per choice (0001 to 0015)
+- [Decisions](docs/decisions/): one short record per choice (0001 to 0019)
 - [Scope](docs/scope.md)
 
 ## AI assistants used

@@ -1,4 +1,4 @@
-# 0015. Three roles (Builder, Owner, Member), owners manage their own team, and owners preview the next digest
+# 0018. Three roles (Builder, Owner, Member), owners manage their own team, and owners preview the next digest
 
 - Status: Proposed, waiting for the product owner's review of the PR
 - Date: 2026-11-13

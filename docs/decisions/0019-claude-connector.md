@@ -1,4 +1,4 @@
-# 0016. A Claude connector (MCP server): read everything, add only with confirmation
+# 0019. A Claude connector (MCP server): read everything, add only with confirmation
 
 - Status: Accepted by the product owner, 2026-11-13
 - Decided by: Guy (product owner)

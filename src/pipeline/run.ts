@@ -8,6 +8,7 @@ import { deliver } from "./deliver";
 import { checkHealth, heartbeat } from "./health";
 import { checkOwnSite, feedbackNotes } from "./own-site";
 import { fillMissingLogos } from "./logo";
+import { repairCardTitles } from "./repair-titles";
 
 const STALE_MINUTES = 45;
 
@@ -47,6 +48,9 @@ export async function runPipeline(db: DB, trigger: string) {
   } catch (e) {
     error = (e as Error).stack ?? String(e);
   }
+
+  // Posts stored with a listing card's whole text as their title get the post's own title. Never blocks the run.
+  await repairCardTitles(db).catch((e) => console.error(`title repair failed: ${(e as Error).message}`));
 
   // Logos for competitors that don't have one kept yet. Never blocks the run.
   await fillMissingLogos(db).catch((e) => console.error(`logos failed: ${(e as Error).message}`));
