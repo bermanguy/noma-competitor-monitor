@@ -6,6 +6,10 @@ Watches competitors' blogs and key pages, judges every new post or quiet page ch
 
 **Live:** https://competitor-monitor-kqys.onrender.com (runs every 3 hours on its own)
 
+## Demo video
+
+**[Watch the demo on Google Drive](https://drive.google.com/file/d/1MQBp4jY40VQ0UZSmNSlSf9IpER-Nef8J/view?usp=sharing)**: what was built and why, the decisions that mattered, what was left out, and a live demo of an owner configuring it. It's too large for git, so it's linked rather than committed.
+
 ## Who uses what
 
 | Who | Where | What they do |
